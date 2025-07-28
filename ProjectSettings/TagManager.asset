@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - Gound
+  - playerWeapon
+  - recoilBone
+  - Ground
+  - Enemy
+  - LevelObjects
+  - StrategicSystem
+  - GlassOnbject
+  - Part
+  - weaponHolder
+  - EnemyWeapon
+  - weaponHolderEnemy
+  - fsbSoldierWeapon
+  - enemyMuzzlePoint
+  - EnemyColiderPart
+  - cameraRotator
+  - EnemySystem
+  - LevelWalls
+  - Wall
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - Ground
+  - Water
+  - UI
+  - Player
+  - Enemy
+  - Glass
+  - Foreground
+  - LevelObject
+  - LevelWalls
+  - PlayerWeapon
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Foreground
+    uniqueID: 3479320573
+    locked: 0
+  - name: Default
+    uniqueID: 0
+    locked: 0

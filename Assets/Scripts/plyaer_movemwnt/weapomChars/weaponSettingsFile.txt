@@ -1,0 +1,27 @@
+{
+  "weapons": [
+    {
+      "name": "Weapon 1",
+      "fireRate": 1.0,
+      "alternateFireRate": 0.5,
+      "weaponRange": 100.0,
+      "weaponDamage": 20.0,
+      "alternateWeaponDamage": 30.0,
+      "recoilForce": 1.0,
+      "alternateRecoilForce": 1.5,
+      "maxAmmo": 30
+    },
+    {
+      "name": "Weapon 2",
+      "fireRate": 3.0,
+      "alternateFireRate": 1.0,
+      "weaponRange": 50.0,
+      "weaponDamage": 10.0,
+      "alternateWeaponDamage": 15.0,
+      "recoilForce": 0.5,
+      "alternateRecoilForce": 0.7,
+      "maxAmmo": 60
+    },
+    // Добавьте дополнительные объекты оружия здесь
+  ]
+}

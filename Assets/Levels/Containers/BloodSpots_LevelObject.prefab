@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8183516482812962025
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8183516482812962027}
+  - component: {fileID: 8183516482812962026}
+  m_Layer: 0
+  m_Name: BloodSpots_LevelObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8183516482812962027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8183516482812962025}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8183516482812962026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8183516482812962025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a525b64d9b968b47a39b936c9173f79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  decalDatas:
+  - prefab: {fileID: 513757554295186514, guid: d79a1da3350b11b4d96fdb5d9aac267c, type: 3}
+    minScale: 1
+    maxScale: 1
+  - prefab: {fileID: 4749155624009620549, guid: 73b1098cb6fa3a84d9cbf7bbfa876350, type: 3}
+    minScale: 1
+    maxScale: 1
+  - prefab: {fileID: 6046093118396917751, guid: 38e8908d0bd15b340b58aa2e58672924, type: 3}
+    minScale: 1
+    maxScale: 1

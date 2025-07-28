@@ -1,0 +1,15 @@
+{
+    "ammoCount": 15,
+    "reloadTime": 2.5,
+    "range": 25.0,
+    "damagePerBullet": 50,
+    "accuracy": 0.01,
+    "isSingleShot": true,
+    "isBurstFire": false,
+    "isRapidFire": false,
+    "bulletsPerShot": 1,
+    "shotsPerBurst": 1,
+    "hasMelee": false,
+    "meleeRange": 2.0,
+    "meleeDamage": 20
+}

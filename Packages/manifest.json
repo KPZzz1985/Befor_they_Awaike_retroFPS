@@ -1,8 +1,8 @@
 {
   "scopedRegistries": [
     {
-      "name": "Cysharp",
-      "url": "https://npm.pkg.github.com",
+      "name": "openupm",
+      "url": "https://package.openupm.com",
       "scopes": ["com.cysharp"]
     }
   ],
@@ -49,6 +49,6 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0",
-    "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=/src/UniTask/Assets/Plugins/UniTask/Packages/com.cysharp.unitask#v2.3.3"
+    "com.cysharp.unitask": "2.3.3"
   }
 }

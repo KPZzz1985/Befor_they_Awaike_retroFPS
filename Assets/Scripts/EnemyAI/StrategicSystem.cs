@@ -5,6 +5,8 @@ using System; // needed for Action
 using System.Collections; // needed for IEnumerator
 using Cysharp.Threading.Tasks;
 using System.Threading;
+using System.Linq;
+using Random = UnityEngine.Random;
 
 public class StrategicSystem : MonoBehaviour
 {
@@ -18,8 +20,8 @@ public class StrategicSystem : MonoBehaviour
         public float lastSeenTime;          // time when enemy last saw player
         public float patternDelay;          // random delay before triggering pattern
         public bool patternTriggered;       // flag whether pattern trigger timed out
-        public bool abilityUsed;     // whether this enemy has used its grenade ability
-        public bool isSitting;             // flag whether enemy is in sitting (ambush) state
+        // removed abilityUsed; now using round-robin selection among eligible soldiers
+        public bool isSitting;              // flag whether enemy is in sitting (ambush) state
 
         // 🔥 Добавлен новый флаг
         public bool isDead;
@@ -43,6 +45,11 @@ public class StrategicSystem : MonoBehaviour
     public Transform playerTransform;
     public float activationRadius = 50f;
     [SerializeField] private float coverUpdateInterval = 1f; // seconds between cover updates
+    [Header("Pattern Timing Settings")]
+    [Tooltip("Minimum delay before pattern triggers (seconds)")]
+    public float minPatternDelay = 2f;
+    [Tooltip("Maximum delay before pattern triggers (seconds)")]
+    public float maxPatternDelay = 4f;
     [Header("Ambush Pattern Settings")]
     [Tooltip("Radius around player to sample ambush destination (meters)")]
     public float ambushRadius = 12f;
@@ -63,9 +70,21 @@ public class StrategicSystem : MonoBehaviour
     public float grenadeManaCost = 65f;
     [Tooltip("Time to charge full mana (seconds)")]
     public float manaRechargeTime = 25f;
+    [Tooltip("Maximum mana")]
+    public float maxMana = 100f;
     [Tooltip("Delay before grenade is thrown (seconds)")]
     public float grenadeThrowDelay = 3f;
+    [Tooltip("Chance (0-1) for grenade throw on each check")]
+    [Range(0f,1f)] public float grenadeThrowChance = 0.5f;
+    [Tooltip("Minimum seconds between grenade throw checks")]
+    public float grenadeCheckIntervalMin = 2.5f;
+    [Tooltip("Maximum seconds between grenade throw checks")]
+    public float grenadeCheckIntervalMax = 5f;
+    [Tooltip("Max distance from soldier to player to allow throw (meters)")]
+    public float grenadeThrowDistance = 12f;
     private float currentMana = 0f;
+    // Round-robin tracer for last thrower to prevent same unit throwing twice in a row
+    private EnemyStatus lastThrowerStatus;
     public event Action<List<CoverFormation.CoverPoint>> OnCoverPointsUpdated; // notify subscribers of new cover points
 
     private CoverFormation coverFormation;
@@ -74,6 +93,20 @@ public class StrategicSystem : MonoBehaviour
     private EnemyChecker enemyChecker;
     private Dictionary<string, IBehaviorPattern> patterns;
     private Dictionary<string, CancellationTokenSource> runningPatterns;
+
+    // Add music settings
+    [Header("Music Settings")]
+    [SerializeField] private AudioClip ambientClip;
+    [SerializeField] private AudioClip fightClip;
+    [SerializeField] [Range(0f,1f)] private float ambientVolume = 1f;
+    [SerializeField] private float fadeDuration = 3f;
+    [SerializeField] private float exitDelay = 10f;
+    [SerializeField] private float exitFadeDuration = 3f;
+
+    private AudioSource ambientSource;
+    private AudioSource fightSource;
+    private bool isInFightMusic = false;
+    private float exitTimer = 0f;
 
     private void Awake()
     {
@@ -84,6 +117,8 @@ public class StrategicSystem : MonoBehaviour
         enemyChecker = FindObjectOfType<EnemyChecker>();
 
         FindEnemies();
+        // initialize last thrower
+        lastThrowerStatus = null;
 
         // init pattern system
         patterns = new Dictionary<string, IBehaviorPattern>();
@@ -91,11 +126,25 @@ public class StrategicSystem : MonoBehaviour
         // register patterns
         patterns["L1Soldier"] = new L1AmbushPattern(this);
         currentMana = 0f;
+
+        // Initialize audio sources
+        ambientSource = gameObject.AddComponent<AudioSource>();
+        ambientSource.clip = ambientClip;
+        ambientSource.loop = true;
+        ambientSource.volume = ambientVolume;
+        ambientSource.Play();
+
+        fightSource = gameObject.AddComponent<AudioSource>();
+        fightSource.clip = fightClip;
+        fightSource.loop = true;
+        fightSource.volume = 0f;
+        fightSource.Play();
     }
 
     private void Start()
     {
-        // cover updates will run every frame in Update()
+        // start grenade throw loop
+        GrenadeLoop().Forget();
     }
 
     // Removed coroutine-based tick; using Update() for continuous cover generation
@@ -110,12 +159,12 @@ public class StrategicSystem : MonoBehaviour
         }
         // recharge mana
         if (manaRechargeTime > 0f)
-            currentMana = Mathf.Min(GrenadeManaMax, currentMana + (grenadeManaCost * Time.deltaTime / manaRechargeTime));
-        UpdateAbilities();
+            currentMana = Mathf.Min(maxMana, currentMana + (maxMana * Time.deltaTime / manaRechargeTime));
         UpdateEnemyStatuses();
         UpdateIntruderAlert();
         UpdatePatternTriggers();
         UpdateActivation();
+        ManageMusic();
     }
 
     private void FindEnemies()
@@ -134,7 +183,9 @@ public class StrategicSystem : MonoBehaviour
             newEnemyStatus.lastSeenTime = Time.time;
             newEnemyStatus.patternDelay = UnityEngine.Random.Range(minPatternDelay, maxPatternDelay);
             newEnemyStatus.patternTriggered = false;
+            // abilityUsed flag removed; round-robin via lastThrowerStatus
             enemyStatuses.Add(newEnemyStatus);
+            // we'll cache L1Soldier statuses later after all are added
         }
     }
 
@@ -218,6 +269,7 @@ public class StrategicSystem : MonoBehaviour
     {
         foreach (var status in enemyStatuses)
         {
+            if (status.isDead) continue;
             if (status.intruderAlert && !status.PlayerSeen && status.patternTriggered)
             {
                 string key = status.enemyObject.name;
@@ -288,23 +340,77 @@ public class StrategicSystem : MonoBehaviour
         }
     }
 
-    private void UpdateAbilities()
+    private async UniTask ThrowAbility(EnemyStatus status, CancellationToken cancellationToken)
     {
-        if (grenadePrefab == null) return;
-        if (currentMana < grenadeManaCost) return;
-        // find first eligible soldier
-        foreach (var status in enemyStatuses)
+        // trigger throw animation
+        var animator = status.enemyObject.GetComponent<Animator>();
+        if (animator != null)
+            animator.SetTrigger("Throw");
+        // disable movement and shooting
+        var movement = status.enemyObject.GetComponent<EnemyMovement2>();
+        var weapon = status.enemyObject.GetComponent<EnemyWeapon>();
+        // stop NavMeshAgent
+        var agent = status.enemyObject.GetComponent<NavMeshAgent>();
+        // only stop agent if it's on a NavMesh
+        if (agent != null && agent.isOnNavMesh)
+            agent.isStopped = true;
+        if (movement != null) movement.enabled = false;
+        if (weapon != null) weapon.enabled = false;
+
+        // wait for throw delay (animation placeholder)
+        await UniTask.Delay(TimeSpan.FromSeconds(grenadeThrowDelay), cancellationToken: cancellationToken);
+
+        // determine spawn position: child 'GrenadeSpawnPoint' if present, else root + offset
+        Transform spawnPoint = status.enemyObject.transform.Find("GrenadeSpawnPoint");
+        Vector3 spawnPos = (spawnPoint != null)
+            ? spawnPoint.position
+            : status.enemyObject.transform.position + Vector3.up * 1f;
+        var grenade = Instantiate(grenadePrefab, spawnPos, Quaternion.identity);
+        var rb = grenade.GetComponent<Rigidbody>() ?? grenade.AddComponent<Rigidbody>();
+        Vector3 dir = (playerTransform.position - spawnPos).normalized;
+        float speed = 10f;
+        rb.velocity = dir * speed + Vector3.up * 5f;
+
+        // resume movement and shooting
+        if (agent != null && agent.isOnNavMesh)
+            agent.isStopped = false;
+        if (movement != null) movement.enabled = true;
+        if (weapon != null) weapon.enabled = true;
+    }
+
+    private async UniTaskVoid GrenadeLoop()
+    {
+        while (true)
         {
-            if (status.enemyObject.name == "L1Soldier" && status.intruderAlert && !status.PlayerSeen && !status.abilityUsed)
-            {
-                status.abilityUsed = true;
-                currentMana -= grenadeManaCost;
-                var ai = status.enemyObject.GetComponent<EnemyAI>();
-                if (ai != null)
-                    ai.PerformGrenadeThrow(grenadePrefab, grenadeThrowDelay, CancellationToken.None).Forget();
-                break;
-            }
+            float wait = Random.Range(grenadeCheckIntervalMin, grenadeCheckIntervalMax);
+            await UniTask.Delay(TimeSpan.FromSeconds(wait));
+            TryGrenadeThrow();
         }
+    }
+
+    private void TryGrenadeThrow()
+    {
+        if (grenadePrefab == null || currentMana < grenadeManaCost) return;
+        // find eligible soldiers
+        var eligible = enemyStatuses
+            .Where(s => !s.isDead
+                     && s.enemyObject.name.StartsWith("L1Soldier")
+                     && s.intruderAlert
+                     && !s.PlayerSeen
+                     && Vector3.Distance(s.enemyObject.transform.position, playerTransform.position) <= grenadeThrowDistance)
+            .ToList();
+        if (eligible.Count == 0) return;
+        // pick random excluding last thrower
+        var pool = eligible.Where(s => s != lastThrowerStatus).ToList();
+        if (pool.Count == 0) pool = eligible;
+        var chosen = pool[Random.Range(0, pool.Count)];
+        // chance check
+        if (Random.value <= grenadeThrowChance)
+        {
+            currentMana = Mathf.Max(0f, currentMana - grenadeManaCost);
+            ThrowAbility(chosen, CancellationToken.None).Forget();
+        }
+        lastThrowerStatus = chosen;
     }
 
     public List<Vector3> GenerateUniquePath(Vector3 start, Vector3 end)
@@ -331,5 +437,66 @@ public class StrategicSystem : MonoBehaviour
 
         path.Add(end);
         return path;
+    }
+
+    // Visual debug of strategic system state
+    private void OnGUI()
+    {
+        float width = 200f;
+        float x = Screen.width - width - 10f;
+        float y = 10f;
+        GUI.Label(new Rect(x, y, width, 20), $"Mana: {currentMana:F1}/{maxMana}");
+        y += 22f;
+        GUI.Label(new Rect(x, y, width, 20), $"Rechratesec: {manaRechargeTime:F1}");
+        y += 22f;
+        GUI.Label(new Rect(x, y, width, 20), $"GrenadeCost: {grenadeManaCost}");
+    }
+
+    // Music management
+    private void ManageMusic()
+    {
+        bool anyAlert = enemyStatuses.Any(s => s.intruderAlert && !s.isDead);
+        if (anyAlert)
+        {
+            exitTimer = 0f;
+            if (!isInFightMusic)
+            {
+                isInFightMusic = true;
+                StopAllCoroutines();
+                // Restart fight track from beginning
+                fightSource.Stop();
+                fightSource.Play();
+                // Fade out ambient and fade in fight music
+                StartCoroutine(FadeMusic(ambientSource, ambientSource.volume, 0f, fadeDuration));
+                StartCoroutine(FadeMusic(fightSource, fightSource.volume, ambientVolume, fadeDuration));
+            }
+        }
+        else
+        {
+            if (isInFightMusic)
+            {
+                exitTimer += Time.deltaTime;
+                if (exitTimer >= exitDelay)
+                {
+                    isInFightMusic = false;
+                    StopAllCoroutines();
+                    StartCoroutine(FadeMusic(fightSource, fightSource.volume, 0f, exitFadeDuration));
+                    StartCoroutine(FadeMusic(ambientSource, ambientSource.volume, ambientVolume, exitFadeDuration));
+                }
+            }
+        }
+    }
+
+    private IEnumerator FadeMusic(AudioSource source, float from, float to, float duration)
+    {
+        float elapsed = 0f;
+        source.volume = from;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            source.volume = Mathf.Lerp(from, to, elapsed / duration);
+            yield return null;
+        }
+        source.volume = to;
     }
 }

@@ -11,7 +11,7 @@ public class CoverFormation : MonoBehaviour
     [SerializeField] private bool showGizmos;
     [SerializeField] private float gizmoSphereSize;
     [SerializeField] private Color gizmoColor;
-    [SerializeField] public List<string> debugHitObjects = new List<string>(); // Лист для дебага объектов, попавшихся на пути луча
+    [SerializeField] public List<string> debugHitObjects = new List<string>(); // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
     [System.Serializable]
     public class CoverPoint
@@ -33,52 +33,49 @@ public class CoverFormation : MonoBehaviour
         previousPlayerPosition = Player.transform.position;
     }
 
+    // cover generation is now handled by StrategicSystem tick loop
     private void Update()
     {
-        if (Vector3.Distance(previousPlayerPosition, Player.transform.position) > 0.1f)
-        {
-            GenerateCoverPoints();
-            previousPlayerPosition = Player.transform.position;
-        }
+        // intentionally left empty
     }
 
-    private void GenerateCoverPoints()
+    public void GenerateCoverPoints()
     {
         coverPointArray.Clear();
         gizmoPoints.Clear();
-        debugHitObjects.Clear(); // Очистка листа перед новой генерацией точек укрытия
+        debugHitObjects.Clear(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
         int coverPointIndex = 0;
-        List<float> rayLengths = playerTargetSystem.GetRayLengths(); // Получаем обрезанные длины лучей
+        List<float> rayLengths = playerTargetSystem.GetRayLengths(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         float angleStep = 360f / playerTargetSystem.RayCount;
 
         for (int i = 0; i < playerTargetSystem.RayCount; i++)
         {
             Vector3 direction = Quaternion.Euler(0, angleStep * i, 0) * Player.transform.forward;
 
-            debugHitObjects.Clear(); // Очищаем лист перед каждым лучом
+            debugHitObjects.Clear(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             Vector3 previousCoverPointPosition = Vector3.zero;
             float currentRayLength = rayLengths[i];
-            Vector3 rayOrigin = playerTargetSystem.RayOriginFixed; // Используем публичное свойство вместо метода
+            Vector3 rayOrigin = playerTargetSystem.RayOriginFixed; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             RaycastHit[] hits = Physics.RaycastAll(rayOrigin, direction, currentRayLength);
-            System.Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance)); // Сортируем по расстоянию, чтобы обрабатывать объекты в порядке их удаления
+            System.Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance)); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
             foreach (RaycastHit hit in hits)
             {
                 if (hit.collider.gameObject.layer == LayerMask.NameToLayer("LevelWalls"))
                 {
-                    // Пропускаем объекты в слое LevelWalls
+                    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ LevelWalls
                     continue;
                 }
 
                 if (!debugHitObjects.Contains(hit.collider.gameObject.name))
                 {
-                    debugHitObjects.Add(hit.collider.gameObject.name); // Добавляем имя объекта в лист для дебага, если его там еще нет
+                    debugHitObjects.Add(hit.collider.gameObject.name); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ
                 }
 
                 if (hit.collider.CompareTag("LevelObjects"))
                 {
-                    // Объект не в слое LevelWalls, создаём точку укрытия за ним
+                    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ LevelWalls, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ
                     Vector3 hitPoint = hit.point;
                     Vector3 behindPoint = hitPoint + direction * minDistanceBetweenRayPoints;
 

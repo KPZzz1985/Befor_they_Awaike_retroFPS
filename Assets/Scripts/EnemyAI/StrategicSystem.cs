@@ -18,6 +18,7 @@ public class StrategicSystem : MonoBehaviour
         public float lastSeenTime;          // time when enemy last saw player
         public float patternDelay;          // random delay before triggering pattern
         public bool patternTriggered;       // flag whether pattern trigger timed out
+        public bool abilityUsed;     // whether this enemy has used its grenade ability
         public bool isSitting;             // flag whether enemy is in sitting (ambush) state
 
         // 🔥 Добавлен новый флаг
@@ -42,8 +43,6 @@ public class StrategicSystem : MonoBehaviour
     public Transform playerTransform;
     public float activationRadius = 50f;
     [SerializeField] private float coverUpdateInterval = 1f; // seconds between cover updates
-    [SerializeField] private float minPatternDelay = 2f;
-    [SerializeField] private float maxPatternDelay = 4f;
     [Header("Ambush Pattern Settings")]
     [Tooltip("Radius around player to sample ambush destination (meters)")]
     public float ambushRadius = 12f;
@@ -57,6 +56,16 @@ public class StrategicSystem : MonoBehaviour
     public float groupSpacingRadius = 3f;
     [Tooltip("Number of enemies per ambush group")]
     public int ambushGroupSize = 2;
+    [Header("Ability System Settings")]
+    [Tooltip("Prefab of the grenade to throw")]
+    public GameObject grenadePrefab;
+    [Tooltip("Cost in mana for throwing a grenade")]
+    public float grenadeManaCost = 65f;
+    [Tooltip("Time to charge full mana (seconds)")]
+    public float manaRechargeTime = 25f;
+    [Tooltip("Delay before grenade is thrown (seconds)")]
+    public float grenadeThrowDelay = 3f;
+    private float currentMana = 0f;
     public event Action<List<CoverFormation.CoverPoint>> OnCoverPointsUpdated; // notify subscribers of new cover points
 
     private CoverFormation coverFormation;
@@ -81,6 +90,7 @@ public class StrategicSystem : MonoBehaviour
         runningPatterns = new Dictionary<string, CancellationTokenSource>();
         // register patterns
         patterns["L1Soldier"] = new L1AmbushPattern(this);
+        currentMana = 0f;
     }
 
     private void Start()
@@ -98,6 +108,10 @@ public class StrategicSystem : MonoBehaviour
             coverFormation.GenerateCoverPoints();
             OnCoverPointsUpdated?.Invoke(coverFormation.GetCoverPoints());
         }
+        // recharge mana
+        if (manaRechargeTime > 0f)
+            currentMana = Mathf.Min(GrenadeManaMax, currentMana + (grenadeManaCost * Time.deltaTime / manaRechargeTime));
+        UpdateAbilities();
         UpdateEnemyStatuses();
         UpdateIntruderAlert();
         UpdatePatternTriggers();
@@ -270,6 +284,25 @@ public class StrategicSystem : MonoBehaviour
             if (!(component is EnemyMovement2) && !(component is DecalTrailCreator))
             {
                 component.enabled = activate;
+            }
+        }
+    }
+
+    private void UpdateAbilities()
+    {
+        if (grenadePrefab == null) return;
+        if (currentMana < grenadeManaCost) return;
+        // find first eligible soldier
+        foreach (var status in enemyStatuses)
+        {
+            if (status.enemyObject.name == "L1Soldier" && status.intruderAlert && !status.PlayerSeen && !status.abilityUsed)
+            {
+                status.abilityUsed = true;
+                currentMana -= grenadeManaCost;
+                var ai = status.enemyObject.GetComponent<EnemyAI>();
+                if (ai != null)
+                    ai.PerformGrenadeThrow(grenadePrefab, grenadeThrowDelay, CancellationToken.None).Forget();
+                break;
             }
         }
     }

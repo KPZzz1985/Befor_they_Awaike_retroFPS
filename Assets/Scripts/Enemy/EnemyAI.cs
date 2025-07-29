@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using System.Collections;
+using System.Collections.Generic;
 
 public class EnemyAI : MonoBehaviour
 {
@@ -47,9 +48,17 @@ public class EnemyAI : MonoBehaviour
     private Health health;
     private bool coverAvailable = false;
     private bool hasSeenPlayer = false;
+    private List<CoverFormation.CoverPoint> currentCoverPoints;
+    private StrategicSystem strategicSystem;
 
     void Start()
     {
+        // subscribe to cover updates
+        strategicSystem = FindObjectOfType<StrategicSystem>();
+        if (strategicSystem != null)
+        {
+            strategicSystem.OnCoverPointsUpdated += HandleCoverPointsUpdated;
+        }
         agent = GetComponent<NavMeshAgent>();
         currentState = initialState;
         agent.speed = patrolSpeed;
@@ -66,26 +75,40 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-
-    void Update()
-{
-    if (hasSeenPlayer || Vector3.Distance(player.position, transform.position) <= sightRadius)
+    private void OnDisable()
     {
-        hasSeenPlayer = true;
-
-        if (health.GetHealthPercentage() <= retreatHealthPercentage)
+        if (strategicSystem != null)
         {
-            currentState = EnemyState.Retreat;
-        }
-        else if (Vector3.Distance(transform.position, player.position) > attackRange)
-        {
-            currentState = EnemyState.Chase;
-        }
-        else // Добавьте этот блок кода
-        {
-            currentState = EnemyState.Attacking;
+            strategicSystem.OnCoverPointsUpdated -= HandleCoverPointsUpdated;
         }
     }
+
+    private void HandleCoverPointsUpdated(List<CoverFormation.CoverPoint> covers)
+    {
+        currentCoverPoints = covers;
+        // reset coverAvailable so it will be evaluated fresh in AI logic
+        coverAvailable = covers != null && covers.Count > 0;
+    }
+
+    void Update()
+    {
+        if (hasSeenPlayer || Vector3.Distance(player.position, transform.position) <= sightRadius)
+        {
+            hasSeenPlayer = true;
+
+            if (health.GetHealthPercentage() <= retreatHealthPercentage)
+            {
+                currentState = EnemyState.Retreat;
+            }
+            else if (Vector3.Distance(transform.position, player.position) > attackRange)
+            {
+                currentState = EnemyState.Chase;
+            }
+            else // default to attack
+            {
+                currentState = EnemyState.Attacking;
+            }
+        }
 
         switch (currentState)
         {
@@ -139,7 +162,7 @@ public class EnemyAI : MonoBehaviour
 
     if (Vector3.Distance(transform.position, patrolPoints[currentPatrolPoint].position) < patrolPointRange)
     {
-        // Выбираем случайную точку патрулирования из списка
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         currentPatrolPoint = Random.Range(0, patrolPoints.Length);
     }
   }
@@ -165,49 +188,30 @@ public class EnemyAI : MonoBehaviour
 
     private void FindCover()
   {
-    Collider[] coverColliders = Physics.OverlapSphere(transform.position, coverSearchRadius, coverLayer);
-
-    if (coverColliders == null || coverColliders.Length == 0)
-    {
-        coverAvailable = false;
-        return;
-    }
-
-    float maxDistance = 0f;
-    Transform bestCoverSpot = null;
-
-    foreach (Collider coverCollider in coverColliders)
-    {
-        Transform coverSpot = coverCollider.transform;
-        float distanceToPlayer = Vector3.Distance(coverSpot.position, player.position);
-        float distanceToEnemy = Vector3.Distance(coverSpot.position, transform.position);
-
-        if (distanceToPlayer >= retreatDistance && distanceToEnemy > maxDistance)
+        // Select nearest dynamic cover point from strategic system
+        if (currentCoverPoints != null && currentCoverPoints.Count > 0)
         {
-            RaycastHit hit;
-            Vector3 directionToPlayer = (player.position - coverSpot.position).normalized;
-
-            if (Physics.Raycast(coverSpot.position, directionToPlayer, out hit, Mathf.Infinity, playerLayer | coverLayer))
+            float minDist = Mathf.Infinity;
+            CoverFormation.CoverPoint bestPoint = null;
+            foreach (var cp in currentCoverPoints)
             {
-                if (hit.transform != player)
+                float d = Vector3.Distance(transform.position, cp.position);
+                if (d < minDist)
                 {
-                    maxDistance = distanceToEnemy;
-                    bestCoverSpot = coverSpot;
+                    minDist = d;
+                    bestPoint = cp;
                 }
             }
+            if (bestPoint != null)
+            {
+                coverAvailable = true;
+                agent.isStopped = false;
+                agent.SetDestination(bestPoint.position);
+                return;
+            }
         }
-    }
-
-    if (bestCoverSpot != null)
-    {
-        coverAvailable = true;
-        coverSpot = bestCoverSpot;
-        currentState = EnemyState.SeekingCover;
-    }
-    else
-    {
+        // No dynamic cover available
         coverAvailable = false;
-    }
   }
 
    private void Strafe()
@@ -296,10 +300,10 @@ public class EnemyAI : MonoBehaviour
     {
         if (hit.transform == player)
         {
-            return false; // Игрок видит противника
+            return false; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
     }
-    return true; // Противник находится в укрытии
+    return true; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   }
 
   private void UnderFire()

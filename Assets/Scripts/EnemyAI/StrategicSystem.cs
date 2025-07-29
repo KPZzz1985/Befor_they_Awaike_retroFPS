@@ -1,6 +1,10 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using System; // needed for Action
+using System.Collections; // needed for IEnumerator
+using Cysharp.Threading.Tasks;
+using System.Threading;
 
 public class StrategicSystem : MonoBehaviour
 {
@@ -11,6 +15,10 @@ public class StrategicSystem : MonoBehaviour
         public List<string> activeComponents;
         public bool intruderAlert;
         public float activationRadius = 50f;
+        public float lastSeenTime;          // time when enemy last saw player
+        public float patternDelay;          // random delay before triggering pattern
+        public bool patternTriggered;       // flag whether pattern trigger timed out
+        public bool isSitting;             // flag whether enemy is in sitting (ambush) state
 
         // 🔥 Добавлен новый флаг
         public bool isDead;
@@ -33,11 +41,30 @@ public class StrategicSystem : MonoBehaviour
     public List<EnemyStatus> enemyStatuses = new List<EnemyStatus>();
     public Transform playerTransform;
     public float activationRadius = 50f;
+    [SerializeField] private float coverUpdateInterval = 1f; // seconds between cover updates
+    [SerializeField] private float minPatternDelay = 2f;
+    [SerializeField] private float maxPatternDelay = 4f;
+    [Header("Ambush Pattern Settings")]
+    [Tooltip("Radius around player to sample ambush destination (meters)")]
+    public float ambushRadius = 12f;
+    [Tooltip("Minimum approach distance from origin towards player (meters)")]
+    public float approachDistanceMin = 10f;
+    [Tooltip("Maximum approach distance from origin towards player (meters)")]
+    public float approachDistanceMax = 15f;
+    [Tooltip("How long enemies wait in ambush after arriving (seconds)")]
+    public float ambushWaitDuration = 15f;
+    [Tooltip("Max spacing of group members when regrouping (meters)")]
+    public float groupSpacingRadius = 3f;
+    [Tooltip("Number of enemies per ambush group")]
+    public int ambushGroupSize = 2;
+    public event Action<List<CoverFormation.CoverPoint>> OnCoverPointsUpdated; // notify subscribers of new cover points
 
     private CoverFormation coverFormation;
     private TacticalAttackSystem tacticalAttackSystem;
     private BattleFormation battleFormation;
     private EnemyChecker enemyChecker;
+    private Dictionary<string, IBehaviorPattern> patterns;
+    private Dictionary<string, CancellationTokenSource> runningPatterns;
 
     private void Awake()
     {
@@ -48,12 +75,32 @@ public class StrategicSystem : MonoBehaviour
         enemyChecker = FindObjectOfType<EnemyChecker>();
 
         FindEnemies();
+
+        // init pattern system
+        patterns = new Dictionary<string, IBehaviorPattern>();
+        runningPatterns = new Dictionary<string, CancellationTokenSource>();
+        // register patterns
+        patterns["L1Soldier"] = new L1AmbushPattern(this);
     }
+
+    private void Start()
+    {
+        // cover updates will run every frame in Update()
+    }
+
+    // Removed coroutine-based tick; using Update() for continuous cover generation
 
     private void Update()
     {
+        // continuous cover updates
+        if (coverFormation != null)
+        {
+            coverFormation.GenerateCoverPoints();
+            OnCoverPointsUpdated?.Invoke(coverFormation.GetCoverPoints());
+        }
         UpdateEnemyStatuses();
         UpdateIntruderAlert();
+        UpdatePatternTriggers();
         UpdateActivation();
     }
 
@@ -69,6 +116,10 @@ public class StrategicSystem : MonoBehaviour
                 activeComponents = new List<string>(),
                 activationRadius = activationRadius
             };
+            // initialize pattern tracking
+            newEnemyStatus.lastSeenTime = Time.time;
+            newEnemyStatus.patternDelay = UnityEngine.Random.Range(minPatternDelay, maxPatternDelay);
+            newEnemyStatus.patternTriggered = false;
             enemyStatuses.Add(newEnemyStatus);
         }
     }
@@ -120,6 +171,10 @@ public class StrategicSystem : MonoBehaviour
 
             if (enemyStatus.PlayerSeen)
             {
+               // reset last seen and pattern trigger when player is seen
+               enemyStatus.lastSeenTime = Time.time;
+               enemyStatus.patternTriggered = false;
+               enemyStatus.patternDelay = UnityEngine.Random.Range(minPatternDelay, maxPatternDelay);
                 enemyStatus.intruderAlert = true;
                 AlertNearbyEnemies(enemyStatus);
             }
@@ -139,6 +194,41 @@ public class StrategicSystem : MonoBehaviour
                     if (distance <= alertRadius.alertRadius)
                     {
                         otherEnemyStatus.intruderAlert = true;
+                    }
+                }
+            }
+        }
+    }
+
+    private void UpdatePatternTriggers()
+    {
+        foreach (var status in enemyStatuses)
+        {
+            if (status.intruderAlert && !status.PlayerSeen && status.patternTriggered)
+            {
+                string key = status.enemyObject.name;
+                // start pattern if registered and not already running
+                if (patterns.ContainsKey(key) && !runningPatterns.ContainsKey(key))
+                {
+                    // collect group of statuses for this key
+                    var group = enemyStatuses.FindAll(s => s.enemyObject.name == key && s.intruderAlert && s.patternTriggered && !s.PlayerSeen);
+                    if (group.Count >= 2)
+                    {
+                        var cts = new CancellationTokenSource();
+                        runningPatterns[key] = cts;
+                        patterns[key]
+                            .RunAsync(group, cts.Token)
+                            .ContinueWith(() =>
+                            {
+                                // cleanup when done
+                                runningPatterns.Remove(key);
+                                // reset flags for statuses
+                                foreach (var s in group)
+                                {
+                                    s.patternTriggered = false;
+                                }
+                            })
+                            .Forget();
                     }
                 }
             }
@@ -189,11 +279,11 @@ public class StrategicSystem : MonoBehaviour
         List<Vector3> path = new List<Vector3>();
         path.Add(start);
 
-        int numIntermediatePoints = Random.Range(2, 4);
+        int numIntermediatePoints = UnityEngine.Random.Range(2, 4);
         for (int i = 0; i < numIntermediatePoints; i++)
         {
             Vector3 randomPoint = Vector3.Lerp(start, end, (float)(i + 1) / (numIntermediatePoints + 1)) +
-                                  new Vector3(Random.Range(-2f, 2f), 0, Random.Range(-2f, 2f));
+                                  new Vector3(UnityEngine.Random.Range(-2f, 2f), 0, UnityEngine.Random.Range(-2f, 2f));
 
             NavMeshHit hit;
             if (NavMesh.SamplePosition(randomPoint, out hit, 1.0f, NavMesh.AllAreas))

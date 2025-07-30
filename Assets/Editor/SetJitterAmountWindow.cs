@@ -3,7 +3,7 @@ using UnityEditor;
 
 public class SetPSOneShaderParametersWindow : EditorWindow
 {
-    // Ключи для сохранения параметров в EditorPrefs
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ EditorPrefs
     private const string TilingKey = "PSOneShader_Tiling";
     private const string PixelationAmountKey = "PSOneShader_PixelationAmount";
     private const string ColorPrecisionKey = "PSOneShader_ColorPrecision";
@@ -11,7 +11,7 @@ public class SetPSOneShaderParametersWindow : EditorWindow
     private const string TextureFPSKey = "PSOneShader_TextureFPS";
     private const string TextureJitterAmplitudeKey = "PSOneShader_TextureJitterAmplitude";
 
-    // Значения по умолчанию (если параметров ещё не было сохранено)
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
     private float newTiling = 64f;
     private float newPixelationAmount = 64f;
     private float newColorPrecision = 32f;
@@ -19,14 +19,14 @@ public class SetPSOneShaderParametersWindow : EditorWindow
     private float newTextureFPS = 10f;
     private float newTextureJitterAmplitude = 0.01f;
 
-    // Добавляем пункт меню для вызова окна
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
     [MenuItem("Tools/Set PSOneShaderGI Parameters for Materials")]
     public static void ShowWindow()
     {
         GetWindow<SetPSOneShaderParametersWindow>("Set PSOneShaderGI Params");
     }
 
-    // При открытии окна считываем сохранённые значения
+    // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private void OnEnable()
     {
         newTiling = EditorPrefs.GetFloat(TilingKey, 64f);
@@ -37,7 +37,7 @@ public class SetPSOneShaderParametersWindow : EditorWindow
         newTextureJitterAmplitude = EditorPrefs.GetFloat(TextureJitterAmplitudeKey, 0.01f);
     }
 
-    // При закрытии окна записываем текущие значения
+    // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private void OnDisable()
     {
         EditorPrefs.SetFloat(TilingKey, newTiling);
@@ -50,9 +50,9 @@ public class SetPSOneShaderParametersWindow : EditorWindow
 
     private void OnGUI()
     {
-        GUILayout.Label("Установка параметров PSOneShaderGI_JitterWithTextureFrameRate", EditorStyles.boldLabel);
+        GUILayout.Label("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ PSOneShaderGI_JitterWithTextureFrameRate", EditorStyles.boldLabel);
 
-        // Отображаем поля для редактирования параметров
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         newTiling = EditorGUILayout.FloatField("_Tiling", newTiling);
         newPixelationAmount = EditorGUILayout.FloatField("_PixelationAmount", newPixelationAmount);
         newColorPrecision = EditorGUILayout.FloatField("_ColorPrecision", newColorPrecision);
@@ -61,7 +61,7 @@ public class SetPSOneShaderParametersWindow : EditorWindow
         newTextureJitterAmplitude = EditorGUILayout.FloatField("_TextureJitterAmplitude", newTextureJitterAmplitude);
 
         GUILayout.Space(10);
-        if (GUILayout.Button("Применить"))
+        if (GUILayout.Button("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"))
         {
             ApplySettingsToAllMaterials();
         }
@@ -69,7 +69,7 @@ public class SetPSOneShaderParametersWindow : EditorWindow
 
     private void ApplySettingsToAllMaterials()
     {
-        // Находим все материалы в проекте
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         string[] guids = AssetDatabase.FindAssets("t:Material");
         int count = 0;
 
@@ -78,7 +78,7 @@ public class SetPSOneShaderParametersWindow : EditorWindow
             string path = AssetDatabase.GUIDToAssetPath(guid);
             Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
 
-            // Если материал существует, проверяем наличие нужных свойств
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (mat != null)
             {
                 bool updated = false;
@@ -114,7 +114,7 @@ public class SetPSOneShaderParametersWindow : EditorWindow
                     updated = true;
                 }
 
-                // Если хотя бы одно свойство было обновлено, помечаем материал как изменённый
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 if (updated)
                 {
                     EditorUtility.SetDirty(mat);
@@ -123,6 +123,61 @@ public class SetPSOneShaderParametersWindow : EditorWindow
             }
         }
 
-        Debug.Log($"Обновлено {count} материалов с параметрами PSOneShaderGI_JitterWithTextureFrameRate.");
+        Debug.Log($"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ {count} пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ PSOneShaderGI_JitterWithTextureFrameRate.");
+    }
+}
+
+// Utility for applying PSOneShaderGI params without UI
+public static class PSOneShaderGIUtility
+{
+    private const string TilingKey = "PSOneShader_Tiling";
+    private const string PixelationAmountKey = "PSOneShader_PixelationAmount";
+    private const string ColorPrecisionKey = "PSOneShader_ColorPrecision";
+    private const string JitterAmountKey = "PSOneShader_JitterAmount";
+    private const string TextureFPSKey = "PSOneShader_TextureFPS";
+    private const string TextureJitterAmplitudeKey = "PSOneShader_TextureJitterAmplitude";
+
+    public static void ApplySettings()
+    {
+        float tiling = EditorPrefs.GetFloat(TilingKey, 64f);
+        float pixelAmount = EditorPrefs.GetFloat(PixelationAmountKey, 64f);
+        float colorPrecision = EditorPrefs.GetFloat(ColorPrecisionKey, 32f);
+        float jitter = EditorPrefs.GetFloat(JitterAmountKey, 1f);
+        float textureFPS = EditorPrefs.GetFloat(TextureFPSKey, 10f);
+        float textureJitterAmp = EditorPrefs.GetFloat(TextureJitterAmplitudeKey, 0.01f);
+
+        string[] guids = AssetDatabase.FindAssets("t:Material");
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null) continue;
+            if (mat.HasProperty("_Tiling")) mat.SetFloat("_Tiling", tiling);
+            if (mat.HasProperty("_PixelationAmount")) mat.SetFloat("_PixelationAmount", pixelAmount);
+            if (mat.HasProperty("_ColorPrecision")) mat.SetFloat("_ColorPrecision", colorPrecision);
+            if (mat.HasProperty("_JitterAmount")) mat.SetFloat("_JitterAmount", jitter);
+            if (mat.HasProperty("_TextureFPS")) mat.SetFloat("_TextureFPS", textureFPS);
+            if (mat.HasProperty("_TextureJitterAmplitude")) mat.SetFloat("_TextureJitterAmplitude", textureJitterAmp);
+            EditorUtility.SetDirty(mat);
+        }
+        Debug.Log($"PSOneShaderGI params applied to {guids.Length} materials.");
+    }
+}
+
+// Auto-apply settings before entering Play mode
+[InitializeOnLoad]
+public static class PSOneShaderGIAutoApply
+{
+    static PSOneShaderGIAutoApply()
+    {
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    private static void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        if (state == PlayModeStateChange.ExitingEditMode)
+        {
+            PSOneShaderGIUtility.ApplySettings();
+        }
     }
 }

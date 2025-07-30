@@ -22,6 +22,7 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
    - Throws occur only if player within `grenadeThrowDistance` meters.
    - Round-robin/random selection prevents the same soldier from throwing twice in a row.
    - `ThrowAbility` disables movement (`EnemyMovement2`) and shooting (`EnemyWeapon`), triggers a "Throw" animation, waits `grenadeThrowDelay` seconds, instantiates a grenade prefab (spawns from a child named `GrenadeSpawnPoint` if present), applies physics, then resumes AI.
+   - If a soldier is killed during the throw delay, the grenade is dropped immediately at the spawn point and falls down without applying throw force.
 
 5. **Visual Debugging**
    - `OnGUI` in `StrategicSystem` displays current `Mana`, `Reload rate`, and `Grenade cost` on-screen for rapid tuning.

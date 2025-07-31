@@ -345,7 +345,7 @@ public class StrategicSystem : MonoBehaviour
         // trigger throw animation
         var animator = status.enemyObject.GetComponent<Animator>();
         if (animator != null)
-            animator.SetTrigger("Throw");
+            animator.SetBool("IsThrowing", true);
         // disable movement and shooting
         var movement = status.enemyObject.GetComponent<EnemyMovement2>();
         var weapon = status.enemyObject.GetComponent<EnemyWeapon>();
@@ -357,21 +357,43 @@ public class StrategicSystem : MonoBehaviour
         if (movement != null) movement.enabled = false;
         if (weapon != null) weapon.enabled = false;
 
-        // wait for throw delay (animation placeholder)
-        await UniTask.Delay(TimeSpan.FromSeconds(grenadeThrowDelay), cancellationToken: cancellationToken);
-
+        // wait for throw delay, but drop if killed during the throw animation
         // determine spawn position: child 'GrenadeSpawnPoint' if present, else root + offset
         Transform spawnPoint = status.enemyObject.transform.Find("GrenadeSpawnPoint");
         Vector3 spawnPos = (spawnPoint != null)
             ? spawnPoint.position
             : status.enemyObject.transform.position + Vector3.up * 1f;
-        var grenade = Instantiate(grenadePrefab, spawnPos, Quaternion.identity);
-        var rb = grenade.GetComponent<Rigidbody>() ?? grenade.AddComponent<Rigidbody>();
-        Vector3 dir = (playerTransform.position - spawnPos).normalized;
-        float speed = 10f;
-        rb.velocity = dir * speed + Vector3.up * 5f;
+        bool dropped = false;
+        float elapsed = 0f;
+        while (elapsed < grenadeThrowDelay)
+        {
+            // drop if soldier dies or enters critical damage stance
+            var eh = status.enemyObject.GetComponent<EnemyHealth>();
+            if (status.isDead || (eh != null && eh.isCriticalDamage))
+            {
+                // drop the item immediately instead of throwing
+                var drop = Instantiate(grenadePrefab, spawnPos, Quaternion.identity);
+                var dropRb = drop.GetComponent<Rigidbody>() ?? drop.AddComponent<Rigidbody>();
+                // no initial velocity so it falls down
+                dropped = true;
+                break;
+            }
+            elapsed += Time.deltaTime;
+            await UniTask.Yield();
+        }
+        if (!dropped)
+        {
+            // perform normal throw
+            var grenade = Instantiate(grenadePrefab, spawnPos, Quaternion.identity);
+            var rb = grenade.GetComponent<Rigidbody>() ?? grenade.AddComponent<Rigidbody>();
+            Vector3 dir = (playerTransform.position - spawnPos).normalized;
+            float speed = 10f;
+            rb.velocity = dir * speed + Vector3.up * 5f;
+        }
 
-        // resume movement and shooting
+        // reset throwing flag and resume movement/shooting
+        if (animator != null)
+            animator.SetBool("IsThrowing", false);
         if (agent != null && agent.isOnNavMesh)
             agent.isStopped = false;
         if (movement != null) movement.enabled = true;
@@ -393,11 +415,15 @@ public class StrategicSystem : MonoBehaviour
         if (grenadePrefab == null || currentMana < grenadeManaCost) return;
         // find eligible soldiers
         var eligible = enemyStatuses
-            .Where(s => !s.isDead
-                     && s.enemyObject.name.StartsWith("L1Soldier")
-                     && s.intruderAlert
-                     && !s.PlayerSeen
-                     && Vector3.Distance(s.enemyObject.transform.position, playerTransform.position) <= grenadeThrowDistance)
+            .Where(s => {
+                var eh = s.enemyObject.GetComponent<EnemyHealth>();
+                bool inCritical = eh != null && eh.isCriticalDamage;
+                return !s.isDead && !inCritical
+                       && s.enemyObject.name.StartsWith("L1Soldier")
+                       && s.intruderAlert
+                       && !s.PlayerSeen
+                       && Vector3.Distance(s.enemyObject.transform.position, playerTransform.position) <= grenadeThrowDistance;
+            })
             .ToList();
         if (eligible.Count == 0) return;
         // pick random excluding last thrower

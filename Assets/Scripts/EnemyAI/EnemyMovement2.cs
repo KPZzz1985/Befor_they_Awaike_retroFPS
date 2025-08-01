@@ -253,11 +253,26 @@ public class EnemyMovement2 : MonoBehaviour
             StopEngage();
 
         if (isCover)
+        {
             EnemyCovering();
+        }
         else if (coverPoints == null || coverPoints.Count == 0)
+        {
             AttackMode();
+        }
         else if (!isEngage)
+        {
             RandomEngage();
+        }
+        else if (isEngage && !isAmbush && !isPush && !isRetreating)
+        {
+            // Restart cover search instead of chasing player
+            if (coverFormation != null)
+                coverPoints = coverFormation.GetCoverPoints();
+            currentCoverTarget = null;
+            isCover = true;
+            EnemyCovering();
+        }
 
         UpdateAnimatorMovement();
     }

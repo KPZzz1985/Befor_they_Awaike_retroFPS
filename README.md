@@ -27,6 +27,19 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
 5. **Visual Debugging**
    - `OnGUI` in `StrategicSystem` displays current `Mana`, `Reload rate`, and `Grenade cost` on-screen for rapid tuning.
 
+6. **Burst Fire Ability**
+   - Added new Burst Fire ability: periodically selects an L1Soldier who sees the player to fire a rapid burst of `shotsPerBurst` bullets at an increased rate.
+   - Uses configurable fields: `burstFireManaCost`, `burstFireChance`, `burstCheckIntervalMin`, `burstCheckIntervalMax`.
+   - Guards ensure no overlap between burst fire and grenade throw.
+
+7. **Weapon Switching Improvements**
+   - Reset reload state on weapon change, preventing aborted reloads from blocking firing.
+   - Prevent switching to the already active weapon and support scripts in child objects via `GetComponentInChildren`.
+
+8. **3D Audio for Shooting & Explosions**
+   - Added spatialized shooting audio in `EnemyWeapon` and `PM_Shooting` with configurable `shootClip`, `shootVolume`, `shootMinDistance`, and `shootMaxDistance`.
+   - Added explosion sound in `BlastProjectile` with `explosionClip`, `explosionVolume`, `explosionMinDistance`, and `explosionMaxDistance`.
+
 ## Unity Package & Dependencies
 
 - **UniTask**: asynchronous toolset installed via OpenUPM registry (package `com.cysharp.unitask`).

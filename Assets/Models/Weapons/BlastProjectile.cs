@@ -1,6 +1,6 @@
 using UnityEngine;
-using System.Collections; // для IEnumerator
-using System.Collections.Generic; // для List
+using System.Collections; // пїЅпїЅпїЅ IEnumerator
+using System.Collections.Generic; // пїЅпїЅпїЅ List
 
 public class BlastProjectile : MonoBehaviour
 {
@@ -36,38 +36,64 @@ public class BlastProjectile : MonoBehaviour
     [Tooltip("Exponent for damage falloff curve; higher values => faster drop-off.")]
     public float falloffExponent = 1f;
 
-    [Tooltip("Если включено, враги будут блокировать урон другим врагам позади")]
+    [Tooltip("пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ")]
     public bool enemiesBlockEachOther = false;
 
     // List of prefabs to spawn on surfaces after explosion.
-    [Tooltip("Список префабов, которые будут спавниться на поверхностях после взрыва")]
+    [Tooltip("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ")]
     public GameObject[] surfacePrefabs;
+    // Optional prefabs to spawn upon explosion, destroyed after destroyDelay seconds
+    [Header("Post-Explosion Prefabs")]
+    [Tooltip("Optional prefabs to spawn at explosion, will be destroyed after destroyDelay seconds.")]
+    public GameObject[] postExplosionPrefabs;
+    [Header("Destroy On Explosion")]
+    [Tooltip("Child objects or components of the projectile to destroy immediately upon explosion.")]
+    public GameObject[] objectsToDestroyOnExplode;
 
     // Minimum and maximum count of prefabs to spawn (inclusive).
-    [Tooltip("Минимальное количество объектов для спавна")]
+    [Tooltip("    ")]
     public int minSpawnCount = 1;
-    [Tooltip("Максимальное количество объектов для спавна")]
+    [Tooltip("    ")]
     public int maxSpawnCount = 3;
 
     // Minimum and maximum lifetime (in seconds) for each spawned prefab.
-    [Tooltip("Минимальное время жизни спавненного объекта")]
+    [Tooltip("    ")]
     public float minPrefabLifeTime = 1f;
-    [Tooltip("Максимальное время жизни спавненного объекта")]
+    [Tooltip("    ")]
     public float maxPrefabLifeTime = 3f;
 
     
 
-    // LayerMask для поверхностей, на которых может появляться префаб (включает ВСЕ слои, кроме Enemy).
-    [Tooltip("Слои, на поверхностях которых будут спавниться префабы (исключая Enemy)")]
+    // LayerMask  ,      (  ,  Enemy).
+    [Tooltip(",       ( Enemy)")]
     public LayerMask surfaceSpawnLayers;
 
-    private bool isArmed = false;   // флаг «вооружённости» (предотвращаем мгновенный взрыв при спавне)
+    // Audio settings for explosion sound
+    [Header("Audio Settings")]
+    [Tooltip("Audio clip to play when explosion occurs.")]
+    public AudioClip explosionClip;
+    [Tooltip("Volume for the explosion sound (0-1).")]
+    [Range(0f,1f)] public float explosionVolume = 1f;
+    [Tooltip("Minimum distance for 3D sound attenuation.")]
+    public float explosionMinDistance = 1f;
+    [Tooltip("Maximum distance for 3D sound attenuation.")]
+    public float explosionMaxDistance = 15f;
+    private AudioSource explosionAudioSource;
+    private bool isArmed = false;   //   (    )
     private bool hasExploded = false;
 
     private void Start()
     {
-        // Ждём одну FixedUpdate (~0.02 с), чтобы снаряд отлетел и не взорвался сразу у точки спавна
+        //   FixedUpdate (~0.02),        
         StartCoroutine(ArmAfterDelay());
+        // Initialize explosion audio source
+        explosionAudioSource = GetComponent<AudioSource>();
+        if (explosionAudioSource == null) explosionAudioSource = gameObject.AddComponent<AudioSource>();
+        explosionAudioSource.spatialBlend = 1f;
+        explosionAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+        explosionAudioSource.minDistance = explosionMinDistance;
+        explosionAudioSource.maxDistance = explosionMaxDistance;
+        explosionAudioSource.playOnAwake = false;
     }
 
     private IEnumerator ArmAfterDelay()
@@ -78,11 +104,11 @@ public class BlastProjectile : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // Если ещё не «вооружён» или уже взорвался — ничего не делаем
+        //          
         if (!isArmed || hasExploded)
             return;
 
-        // Проверяем, принадлежит ли слой столкнувшегося объекта маске affectedLayers
+        // ,       affectedLayers
         if (((1 << collision.gameObject.layer) & affectedLayers) == 0)
             return;
 
@@ -93,34 +119,45 @@ public class BlastProjectile : MonoBehaviour
     private void Explode()
     {
         Vector3 explosionCenter = transform.position;
-
-        // 1) Спавним префаб VFX, если он указан
+        // Destroy specified objects that are part of the projectile
+        if (objectsToDestroyOnExplode != null)
+        {
+            foreach (var obj in objectsToDestroyOnExplode)
+            {
+                if (obj != null)
+                    Destroy(obj);
+            }
+        }
+        // 1) Spawn VFX, if any
         if (explosionEffectPrefab != null)
         {
             Instantiate(explosionEffectPrefab, explosionCenter, Quaternion.identity);
         }
+        // Play explosion sound
+        if (explosionClip != null && explosionAudioSource != null)
+            explosionAudioSource.PlayOneShot(explosionClip, explosionVolume);
 
-        // 2) Собираем всех коллайдеров внутри maxExpandScale (они могут быть врагами, игроком и т.д.)
+        // 2)     maxExpandScale (   , ..)
         Collider[] colliders = Physics.OverlapSphere(explosionCenter, maxExpandScale, affectedLayers);
 
-        // 3) Если есть визуальный эффект расширяющейся сферы — запускаем корутину.
-        //    Иначе — сразу наносим урон одним разом, но с учётом преград.
+        // 3) пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+        //    пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
         if (sphereMeshFilter != null && explosionRingMaterial != null)
         {
             StartCoroutine(ShowExpandingSphereAndDamage(explosionCenter, colliders));
         }
         else
         {
-            // Наносим урон сразу: сначала по врагам с видимостью, затем по игроку (без проверки IsEnemyVisible)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ IsEnemyVisible)
             foreach (Collider hitCollider in colliders)
             {
                 Transform hitTransform = hitCollider.transform;
 
-                // 1) Проверяем EnemyHealth
+                // 1) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ EnemyHealth
                 EnemyHealth eh = hitTransform.GetComponentInParent<EnemyHealth>();
                 if (eh != null)
                 {
-                    // Если враг «видим» — бьём
+                    // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ
                     if (IsEnemyVisible(hitTransform, explosionCenter))
                     {
                         ApplyFalloffDamage(hitCollider, explosionCenter);
@@ -128,7 +165,7 @@ public class BlastProjectile : MonoBehaviour
                     continue;
                 }
 
-                // 2) Проверяем Damageable (может это любой другой дамажабельный объект, включая Player)
+                // 2) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Damageable (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Player)
                 Damageable damageable = hitCollider.GetComponent<Damageable>();
                 if (damageable != null)
                 {
@@ -137,7 +174,7 @@ public class BlastProjectile : MonoBehaviour
                     continue;
                 }
 
-                // 3) Проверяем PlayerHealth (если не через Damageable)
+                // 3) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ PlayerHealth (пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Damageable)
                 PlayerHealth ph = hitCollider.GetComponent<PlayerHealth>();
                 if (ph != null)
                 {
@@ -146,26 +183,36 @@ public class BlastProjectile : MonoBehaviour
                     continue;
                 }
 
-                // 4) Если нужно, можно добавить другие типы целей
+                // 4) пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             }
         }
         StartCoroutine(SpawnSurfacePrefabs(explosionCenter));
-
-        // 4) Удаляем сам снаряд через destroyDelay
-        
+        // spawn additional post-explosion prefabs
+        if (postExplosionPrefabs != null)
+        {
+            foreach (var prefab in postExplosionPrefabs)
+            {
+                if (prefab != null)
+                {
+                    GameObject obj = Instantiate(prefab, explosionCenter, Quaternion.identity);
+                    // Schedule destruction after delay
+                    StartCoroutine(DestroyPostPrefab(obj));
+                }
+            }
+        }
     }
 
     /// <summary>
     /// Spawns random prefabs on actual surfaces (from surfaceSpawnLayers)
-    /// within explosion radius immediately (no spawnDelay). Затем ждёт destroyDelay и удаляет сам BlastProjectile.
+    /// within explosion radius immediately (no spawnDelay). пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ destroyDelay пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ BlastProjectile.
     /// </summary>
     private IEnumerator SpawnSurfacePrefabs(Vector3 center)
     {
-        // 0) Если нет запланированных префабов — сразу выходим
+        // 0) пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (surfacePrefabs == null || surfacePrefabs.Length == 0)
             yield break;
 
-        // 1) Собираем все коллайдеры нужных слоёв в радиусе взрыва
+        // 1) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         Collider[] surfaceColliders = Physics.OverlapSphere(center, maxExpandScale, surfaceSpawnLayers);
         if (surfaceColliders == null || surfaceColliders.Length == 0)
         {
@@ -261,50 +308,50 @@ public class BlastProjectile : MonoBehaviour
     /// </summary>
     private bool IsEnemyVisible(Transform enemyTransform, Vector3 center)
     {
-        // 1) Находим компонент EnemyHealth у этого трансформа (может быть вложен)
+        // 1) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ EnemyHealth пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
         EnemyHealth enemyHealthComponent = enemyTransform.GetComponentInParent<EnemyHealth>();
         if (enemyHealthComponent == null)
         {
-            // Если у этой трансформации нет EnemyHealth сверху — это не наш враг
+            // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ EnemyHealth пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             return false;
         }
         Transform enemyRoot = enemyHealthComponent.transform;
 
-        // 2) Вычисляем направление от центра взрыва к пивоту (root-позиции) этого врага
+        // 2) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (root-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         Vector3 direction = (enemyRoot.position - center).normalized;
         float distanceToEnemy = Vector3.Distance(center, enemyRoot.position);
 
-        // 3) Составляем LayerMask для Raycast с учётом флага enemiesBlockEachOther.
-        // Если враги НЕ должны блокировать друг друга, — мы исключаем слой "Enemy" из проверки.
+        // 3) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ LayerMask пїЅпїЅпїЅ Raycast пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ enemiesBlockEachOther.
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ "Enemy" пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
         int enemyLayer = LayerMask.NameToLayer("Enemy");
         int raycastMask;
         if (enemiesBlockEachOther)
         {
-            // Raycast будет учитывать ВСЕ слои (включая Enemy)
-            raycastMask = ~0; // все биты включены
+            // Raycast пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Enemy)
+            raycastMask = ~0; // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
         else
         {
-            // Исключаем слой Enemy: все биты, кроме того, что соответствует EnemyLayer
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ Enemy: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ EnemyLayer
             raycastMask = ~(1 << enemyLayer);
         }
 
-        // 4) Выполняем Raycast с этим маской
+        // 4) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Raycast пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         if (Physics.Raycast(center, direction, out RaycastHit hitInfo, distanceToEnemy, raycastMask))
         {
-            // Если первым попался объект с EnemyHealth и это тот же корень — враг не скрыт
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ EnemyHealth пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             EnemyHealth hitEnemy = hitInfo.collider.GetComponentInParent<EnemyHealth>();
             if (hitEnemy != null && hitEnemy.transform == enemyRoot)
             {
                 return true;
             }
-            // Иначе: либо попали в коллайдер другого врага (если враги блокируют друг друга),
-            // либо в любую другую преграду (стена, объект уровня и т. д.) — значит, враг скрыт
+            // пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ),
+            // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ. пїЅ.) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             return false;
         }
 
-        // 5) Если raycast ничего не встретил до позиции врага (напр. странные случаи), 
-        //    считаем, что враг видим и даём ему урон.
+        // 5) пїЅпїЅпїЅпїЅ raycast пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ), 
+        //    пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
         return true;
     }
 
@@ -316,12 +363,12 @@ public class BlastProjectile : MonoBehaviour
     /// </summary>
     private IEnumerator ShowExpandingSphereAndDamage(Vector3 center, Collider[] colliders)
     {
-        // Создаём объект-«кольцо»
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         GameObject ring = new GameObject("ExplosionRing");
         ring.transform.position = center;
         ring.transform.rotation = Quaternion.identity;
 
-        // Применяем MeshFilter и материал
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ MeshFilter пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         MeshFilter mf = ring.AddComponent<MeshFilter>();
         mf.mesh = sphereMeshFilter.sharedMesh;
 
@@ -329,14 +376,14 @@ public class BlastProjectile : MonoBehaviour
         Material matInstance = new Material(explosionRingMaterial);
         mr.material = matInstance;
 
-        // Устанавливаем стартовый масштаб равным radius
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ radius
         float startScale = radius;
         ring.transform.localScale = Vector3.one * startScale;
 
-        // Запомним исходную прозрачность материала
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float initialAlpha = matInstance.color.a;
 
-        // Массив, чтобы помечать, кто уже получил урон или проверен
+        // пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         bool[] hasTakenDamage = new bool[colliders.Length];
 
         float elapsed = 0f;
@@ -345,16 +392,16 @@ public class BlastProjectile : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / expandDuration);
 
-            // 1) Визуальное расширение: от radius до maxExpandScale
+            // 1) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅ radius пїЅпїЅ maxExpandScale
             float currentScale = Mathf.Lerp(startScale, maxExpandScale, t);
             ring.transform.localScale = Vector3.one * currentScale;
 
-            // 2) Плавное уменьшение прозрачности кольца
+            // 2) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             Color c = matInstance.color;
             c.a = Mathf.Lerp(initialAlpha, 0f, t);
             matInstance.color = c;
 
-            // 3) Проходим по каждому коллайдеру, который ещё не получил урон
+            // 3) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             for (int i = 0; i < colliders.Length; i++)
             {
                 if (hasTakenDamage[i])
@@ -364,31 +411,31 @@ public class BlastProjectile : MonoBehaviour
                 if (hit == null)
                     continue;
 
-                // Рассчитываем ближайшую точку к центру
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 Vector3 hitPoint = hit.ClosestPoint(center);
                 float dist = Vector3.Distance(hitPoint, center);
 
-                // Если попадает в текущий радиус расширяющейся сферы — пора нанести урон
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
                 if (dist <= currentScale)
                 {
-                    // Проверяем, является ли это врагом
+                    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                     Transform hitTransform = hit.transform;
                     EnemyHealth eh = hitTransform.GetComponentInParent<EnemyHealth>();
                     if (eh != null)
                     {
-                        // Если лучом видно (прямая не перекрыта) — наносим урон
+                        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
                         if (IsEnemyVisible(hitTransform, center))
                         {
                             ApplyFalloffDamage(hit, center);
                         }
-                        // Если не видно — просто не наносим урон (и больше не проверяем этот коллайдер)
+                        // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                         hasTakenDamage[i] = true;
                     }
                     else
                     {
-                        // Если попался не-враг (Игрок, объект уровня и т.д.), 
-                        // оставляем старую логику, если нужно.
-                        // Например, можно сразу ApplyFalloffDamage(hit, center) без проверки или вовсе пропустить.
+                        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ-пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ.пїЅ.), 
+                        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
+                        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ApplyFalloffDamage(hit, center) пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
                         hasTakenDamage[i] = true;
                     }
                 }
@@ -397,7 +444,7 @@ public class BlastProjectile : MonoBehaviour
             yield return null;
         }
 
-        // После завершения расширения удаляем ring
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ring
         Destroy(ring);
     }
 
@@ -405,11 +452,11 @@ public class BlastProjectile : MonoBehaviour
     // BlastProjectile.cs
     private void ApplyFalloffDamage(Collider hit, Vector3 center)
     {
-        // 1) Находим точку попадания и дистанцию
+        // 1) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 hitPoint = hit.ClosestPoint(center);
         float dist = Vector3.Distance(hitPoint, center);
 
-        // 2) Вычисляем финальный урон с экспоненциальным падением
+        // 2) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float finalDamage = 0f;
         if (dist <= radius)
         {
@@ -427,11 +474,11 @@ public class BlastProjectile : MonoBehaviour
             finalDamage = Mathf.Lerp(damage, 0f, falloff);
         }
 
-        // 3) Если урон нулевой — выходим сразу и не дергаем TakeDamage
+        // 3) пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ TakeDamage
         if (finalDamage <= 0f)
             return;
 
-        // 4) Пробуем нанести Blast-урон через Damageable
+        // 4) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Blast-пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Damageable
         Damageable dmg = hit.GetComponent<Damageable>();
         if (dmg != null)
         {
@@ -442,7 +489,7 @@ public class BlastProjectile : MonoBehaviour
             return;
         }
 
-        // 5) Или через EnemyHealth
+        // 5) пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ EnemyHealth
         EnemyHealth enemy = hit.GetComponentInParent<EnemyHealth>();
         if (enemy != null)
         {
@@ -453,7 +500,7 @@ public class BlastProjectile : MonoBehaviour
             return;
         }
 
-        // 6) Или через PlayerHealth (целочисленный зачёт)
+        // 6) пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ PlayerHealth (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
         PlayerHealth player = hit.GetComponent<PlayerHealth>();
         if (player != null)
         {
@@ -465,12 +512,20 @@ public class BlastProjectile : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        // Показываем область «минимального» радиуса красным полупрозрачным шаром
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         Gizmos.color = Color.red * new Color(1f, 1f, 1f, 0.2f);
         Gizmos.DrawSphere(transform.position, radius);
 
-        // Показываем максимальный радиус (maxExpandScale) другим цветом
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (maxExpandScale) пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         Gizmos.color = Color.yellow * new Color(1f, 1f, 1f, 0.2f);
         Gizmos.DrawSphere(transform.position, maxExpandScale);
+    }
+
+    // Coroutine to destroy a spawned post-explosion prefab after destroyDelay seconds
+    private IEnumerator DestroyPostPrefab(GameObject obj)
+    {
+        yield return new WaitForSeconds(destroyDelay);
+        if (obj != null)
+            Destroy(obj);
     }
 }

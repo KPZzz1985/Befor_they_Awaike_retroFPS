@@ -1,6 +1,9 @@
 ﻿using System.IO;
 using UnityEngine;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using System;
+using Random = UnityEngine.Random;
 
 public class EnemyWeapon : MonoBehaviour
 {
@@ -32,6 +35,10 @@ public class EnemyWeapon : MonoBehaviour
     public GameObject bulletPrefab;
     public float bulletSpeed = 10f;
     public float bulletDestroyDistance = 100f;
+    public GameObject shellPrefab; // Prefab for shell casing ejection
+    public bool isReloading;       // flag for reload in progress
+    private int maxAmmoCount;
+    private Animator animator;
 
     // Таймер между выстрелами
     public float shotCooldown = 1f; // интервал между выстрелами (можно настроить в инспекторе)
@@ -47,6 +54,24 @@ public class EnemyWeapon : MonoBehaviour
     public float muzzleFlashDuration = 0.75f;
 
     public float maxLookAtSpeed = 10f;
+    [Header("Audio Settings")]
+    [Tooltip("Clip to play when shooting.")]
+    public AudioClip shootClip;
+    [Tooltip("Volume of the shoot sound (0-1).")]
+    [Range(0f,1f)] public float shootVolume = 1f;
+    [Tooltip("Minimum distance for 3D sound attenuation.")]
+    public float shootMinDistance = 1f;
+    [Tooltip("Maximum distance for 3D sound attenuation.")]
+    public float shootMaxDistance = 15f;
+    private AudioSource shootAudioSource;
+
+    /// <summary>
+    /// Resets reload state, allowing shooting/reload after switching weapons.
+    /// </summary>
+    public void ResetReloadState()
+    {
+        isReloading = false;
+    }
 
     void Start()
     {
@@ -77,22 +102,22 @@ public class EnemyWeapon : MonoBehaviour
         {
             Debug.LogError("Failed to attach weapon during Start. Check if any weapons are available and if the resourceTag is correct.");
         }
+        // Load weapon data directly from currentWeaponPrefabName
+        animator = GetComponent<Animator>();
+        maxAmmoCount = ammoCount;
+        // Initialize 3D audio source for shooting
+        shootAudioSource = GetComponent<AudioSource>();
+        if (shootAudioSource == null) shootAudioSource = gameObject.AddComponent<AudioSource>();
+        shootAudioSource.spatialBlend = 1f;
+        shootAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+        shootAudioSource.minDistance = shootMinDistance;
+        shootAudioSource.maxDistance = shootMaxDistance;
+        shootAudioSource.playOnAwake = false;
+        attachedWeaponDisplay = currentWeaponPrefabName;
+        if (!string.IsNullOrEmpty(attachedWeaponDisplay))
+            LoadWeaponData(attachedWeaponDisplay);
         else
-        {
-            EnemyChecker enemyChecker = GameObject.FindObjectOfType<EnemyChecker>();
-            if (enemyChecker != null)
-            {
-                attachedWeaponDisplay = enemyChecker.GetEnemyWeaponName(gameObject);
-                if (!string.IsNullOrEmpty(attachedWeaponDisplay))
-                {
-                    LoadWeaponData(attachedWeaponDisplay);
-                }
-                else
-                {
-                    Debug.LogWarning("attachedWeaponDisplay is null or empty.");
-                }
-            }
-        }
+            Debug.LogWarning($"currentWeaponPrefabName is null or empty on {gameObject.name}, cannot load JSON.");
     }
 
     void Update()
@@ -100,6 +125,12 @@ public class EnemyWeapon : MonoBehaviour
         if (enemyHealth != null)
         {
             isDead = enemyHealth.isDead;
+            // Prevent any actions during critical damage
+            if (enemyHealth.isCriticalDamage)
+            {
+                isShooting = false;
+                return;
+            }
         }
 
         if (isDead && attachedWeapon != null)
@@ -161,6 +192,16 @@ public class EnemyWeapon : MonoBehaviour
                 RotateMuzzleTowardsPlayer(muzzlePoint.transform, playerObject.transform);
             }
         }
+        // Debug ammo and reload
+        Debug.Log($"[Debug] {gameObject.name} Update: ammoCount={ammoCount}, isReloading={isReloading}");
+        // trigger reload if needed and alive
+        if (!isReloading && ammoCount <= 0 && !isDead)
+        {
+            Debug.Log($"[Debug] {gameObject.name} starting reload");
+            ReloadAsync().Forget();
+        }
+        if (isReloading)
+            return;
     }
 
     void AttachWeaponToHolder()
@@ -259,6 +300,8 @@ public class EnemyWeapon : MonoBehaviour
             hasMelee = weaponData.hasMelee;
             meleeRange = weaponData.meleeRange;
             meleeDamage = weaponData.meleeDamage;
+            // update max ammo based on loaded data
+            maxAmmoCount = ammoCount;
         }
         else
         {
@@ -266,9 +309,11 @@ public class EnemyWeapon : MonoBehaviour
         }
     }
 
-    void Shoot()
+    public void Shoot()
     {
         if (isDead || attachedWeapon == null)
+            return;
+        if (ammoCount <= 0)
             return;
 
         if (Vector3.Distance(transform.position, playerObject.transform.position) > range)
@@ -286,7 +331,9 @@ public class EnemyWeapon : MonoBehaviour
             GameObject muzzleFlash = Instantiate(muzzleFlashPrefab, muzzlePoint.transform.position, muzzlePoint.transform.rotation, muzzlePoint.transform);
             Destroy(muzzleFlash, muzzleFlashDuration);
         }
-
+        // Play shooting sound
+        if (shootClip != null && shootAudioSource != null)
+            shootAudioSource.PlayOneShot(shootClip, shootVolume);
         GameObject bullet = Instantiate(bulletPrefab, muzzlePoint.transform.position, muzzlePoint.transform.rotation, null);
         if (!bullet)
         {
@@ -317,6 +364,42 @@ public class EnemyWeapon : MonoBehaviour
             bulletRb.AddForce(direction * bulletSpeed, ForceMode.Impulse);
         else
             Debug.LogError("No Rigidbody found on the bullet prefab.");
+        // Decrement ammo and trigger reload when empty
+        ammoCount--;
+    }
+
+    // Reload logic using UniTask
+    private async UniTaskVoid ReloadAsync()
+    {
+        Debug.Log($"[Debug] {gameObject.name} ReloadAsync started");
+        isReloading = true;
+        if (animator != null)
+            animator.SetBool("isReloading", true);
+        // first half delay
+        await UniTask.Delay(TimeSpan.FromSeconds(reloadTime * 0.5f));
+        // abort on critical or death
+        if (enemyHealth != null && (enemyHealth.isCriticalDamage || enemyHealth.isDead))
+        {
+            if (animator != null) animator.SetBool("isReloading", false);
+            isReloading = false;
+            return;
+        }
+        // shell ejection
+        if (shellPrefab != null && attachedWeapon != null)
+            Instantiate(shellPrefab, attachedWeapon.transform.position, attachedWeapon.transform.rotation);
+        // second half delay
+        await UniTask.Delay(TimeSpan.FromSeconds(reloadTime * 0.5f));
+        // abort on critical or death
+        if (enemyHealth != null && (enemyHealth.isCriticalDamage || enemyHealth.isDead))
+        {
+            if (animator != null) animator.SetBool("isReloading", false);
+            isReloading = false;
+            return;
+        }
+        // complete reload
+        ammoCount = maxAmmoCount;
+        if (animator != null) animator.SetBool("isReloading", false);
+        isReloading = false;
     }
 
     private Vector3 ApplyAccuracy(Vector3 direction)

@@ -4,9 +4,9 @@ using UnityEngine;
 
 public class WeaponSwitcher : MonoBehaviour
 {
-    public List<GameObject> weapons; // список оружия
-    public List<char> weaponKeys; // символы, соответствующие оружию
-    public float switchSpeed; // скорость переключения
+    public List<GameObject> weapons; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    public List<char> weaponKeys; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    public float switchSpeed; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     private int currentWeaponIndex;
 
@@ -25,6 +25,8 @@ public class WeaponSwitcher : MonoBehaviour
         {
             if (Input.GetKeyDown(weaponKeys[i].ToString()))
             {
+                // Do nothing if selecting the same weapon
+                if (i == currentWeaponIndex) continue;
                 StartCoroutine(SwitchWeapon(i));
             }
         }
@@ -34,7 +36,18 @@ public class WeaponSwitcher : MonoBehaviour
     {
         for (int i = 0; i < weapons.Count; i++)
         {
-            weapons[i].SetActive(i == index);
+            bool activate = (i == index);
+            weapons[i].SetActive(activate);
+            if (activate)
+            {
+                // Reset reload state on newly activated weapon scripts in any children
+                var ew = weapons[i].GetComponentInChildren<EnemyWeapon>();
+                if (ew != null)
+                    ew.ResetReloadState();
+                var ps = weapons[i].GetComponentInChildren<PM_Shooting>();
+                if (ps != null)
+                    ps.ResetReloadState();
+            }
         }
     }
 

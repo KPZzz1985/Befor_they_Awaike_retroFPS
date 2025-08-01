@@ -3,6 +3,12 @@ using UnityEngine;
 
 public class PM_Shooting : MonoBehaviour
 {
+    [Header("Audio Settings")]
+    [Tooltip("Audio clip to play when shooting.")]
+    public AudioClip shootClip;
+    [Tooltip("Volume of the shooting sound.")]
+    [Range(0f,1f)] public float shootVolume = 1f;
+    private AudioSource shootAudioSource;
     public Transform muzzlePoint;
     public GameObject muzzleFlashPrefab;
     public PM_animations animatorScript;
@@ -51,6 +57,15 @@ public class PM_Shooting : MonoBehaviour
     public GameObject shellPrefab;
     public Transform shellEjectionPoint;
     public float shellLifetime = 5f;
+    /// <summary>
+    /// Resets reload state when switching weapons.
+    /// </summary>
+    public void ResetReloadState()
+    {
+        isReloading = false;
+        isReloadingSingle = false;
+        reloadInterrupted = false;
+    }
 
     [Tooltip("Сколько секунд ждать после выстрела перед созданием гильзы. 0 = без задержки.")]
     public float shellEjectionDelay = 0f;
@@ -79,6 +94,11 @@ public class PM_Shooting : MonoBehaviour
     private void Start()
     {
         currentAmmo = maxAmmo;
+        // Initialize audio source for shooting if needed
+        shootAudioSource = GetComponent<AudioSource>();
+        if (shootAudioSource == null) shootAudioSource = gameObject.AddComponent<AudioSource>();
+        shootAudioSource.playOnAwake = false;
+        shootAudioSource.spatialBlend = 1f; // 3D sound
     }
 
     private void Update()
@@ -168,6 +188,11 @@ public class PM_Shooting : MonoBehaviour
 
         currentAmmo--;
         animatorScript.animator.SetTrigger("isShoot");
+        // Play shooting sound
+        if (shootClip != null && shootAudioSource != null)
+        {
+            shootAudioSource.PlayOneShot(shootClip, shootVolume);
+        }
 
         // 1) Projectile Mode
         if (isProjectileMode && projectilePrefab != null)

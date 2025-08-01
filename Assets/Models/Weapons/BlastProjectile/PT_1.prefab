@@ -94,6 +94,10 @@ MonoBehaviour:
   - {fileID: 382460624685181807, guid: e53724af7970e234c947846857cdc926, type: 3}
   - {fileID: 382460624685181807, guid: 40633633ce26b8546aaad0f99f4198ff, type: 3}
   - {fileID: 382460624685181807, guid: d61bd593adf90384e8de0740db14817b, type: 3}
+  postExplosionPrefabs: []
+  objectsToDestroyOnExplode:
+  - {fileID: 2418520891874665196}
+  - {fileID: 8819539947984248122}
   minSpawnCount: 25
   maxSpawnCount: 50
   minPrefabLifeTime: 5
@@ -101,6 +105,10 @@ MonoBehaviour:
   surfaceSpawnLayers:
     serializedVersion: 2
     m_Bits: 3208
+  explosionClip: {fileID: 8300000, guid: b20333336b0ee5e44a70746e8e4ae49e, type: 3}
+  explosionVolume: 1
+  explosionMinDistance: 1
+  explosionMaxDistance: 15
 --- !u!1 &2418520891874665196
 GameObject:
   m_ObjectHideFlags: 0
@@ -249,6 +257,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 85a8865d1bf4a63478038fae23776de8, type: 3}
+--- !u!1 &8819539947984248122 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1000012560919920, guid: 85a8865d1bf4a63478038fae23776de8, type: 3}
+  m_PrefabInstance: {fileID: 8819949517920088138}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &8820568865784974170 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4000011112872720, guid: 85a8865d1bf4a63478038fae23776de8, type: 3}

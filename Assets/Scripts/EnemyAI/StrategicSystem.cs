@@ -30,6 +30,8 @@ public class StrategicSystem : MonoBehaviour
         public bool isPatrol;
         public bool isAssault = false;
         public bool isPlayerSeen = false; // ✅ Новый флаг
+        public bool isThrowingAbility; // guard grenade throw
+        public bool isBurstFiring;     // guard burst fire
 
         public bool PlayerSeen
         {
@@ -68,6 +70,8 @@ public class StrategicSystem : MonoBehaviour
     public GameObject grenadePrefab;
     [Tooltip("Cost in mana for throwing a grenade")]
     public float grenadeManaCost = 65f;
+    [Tooltip("Cost in mana for burst fire")]
+    public float burstFireManaCost = 20f;
     [Tooltip("Time to charge full mana (seconds)")]
     public float manaRechargeTime = 25f;
     [Tooltip("Maximum mana")]
@@ -82,9 +86,17 @@ public class StrategicSystem : MonoBehaviour
     public float grenadeCheckIntervalMax = 5f;
     [Tooltip("Max distance from soldier to player to allow throw (meters)")]
     public float grenadeThrowDistance = 12f;
+    [Tooltip("Chance (0-1) for burst fire on each check")]
+    [Range(0f,1f)] public float burstFireChance = 0.5f;
+    [Tooltip("Minimum seconds between burst fire checks")]
+    public float burstCheckIntervalMin = 2.5f;
+    [Tooltip("Maximum seconds between burst fire checks")]
+    public float burstCheckIntervalMax = 5f;
     private float currentMana = 0f;
     // Round-robin tracer for last thrower to prevent same unit throwing twice in a row
     private EnemyStatus lastThrowerStatus;
+    // round-robin tracer for grenades
+    private EnemyStatus lastBurstFireThrowerStatus;
     public event Action<List<CoverFormation.CoverPoint>> OnCoverPointsUpdated; // notify subscribers of new cover points
 
     private CoverFormation coverFormation;
@@ -119,6 +131,7 @@ public class StrategicSystem : MonoBehaviour
         FindEnemies();
         // initialize last thrower
         lastThrowerStatus = null;
+        lastBurstFireThrowerStatus = null;
 
         // init pattern system
         patterns = new Dictionary<string, IBehaviorPattern>();
@@ -143,8 +156,8 @@ public class StrategicSystem : MonoBehaviour
 
     private void Start()
     {
-        // start grenade throw loop
         GrenadeLoop().Forget();
+        BurstFireLoop().Forget();
     }
 
     // Removed coroutine-based tick; using Update() for continuous cover generation
@@ -342,6 +355,7 @@ public class StrategicSystem : MonoBehaviour
 
     private async UniTask ThrowAbility(EnemyStatus status, CancellationToken cancellationToken)
     {
+        status.isThrowingAbility = true;
         // trigger throw animation
         var animator = status.enemyObject.GetComponent<Animator>();
         if (animator != null)
@@ -398,6 +412,7 @@ public class StrategicSystem : MonoBehaviour
             agent.isStopped = false;
         if (movement != null) movement.enabled = true;
         if (weapon != null) weapon.enabled = true;
+        status.isThrowingAbility = false;
     }
 
     private async UniTaskVoid GrenadeLoop()
@@ -412,31 +427,91 @@ public class StrategicSystem : MonoBehaviour
 
     private void TryGrenadeThrow()
     {
+        Debug.Log($"[Debug] TryGrenadeThrow: currentMana={currentMana}, grenadeThrowChance={grenadeThrowChance}");
         if (grenadePrefab == null || currentMana < grenadeManaCost) return;
-        // find eligible soldiers
         var eligible = enemyStatuses
             .Where(s => {
                 var eh = s.enemyObject.GetComponent<EnemyHealth>();
+                var weapon = s.enemyObject.GetComponent<EnemyWeapon>();
                 bool inCritical = eh != null && eh.isCriticalDamage;
                 return !s.isDead && !inCritical
+                       && !s.isBurstFiring
                        && s.enemyObject.name.StartsWith("L1Soldier")
                        && s.intruderAlert
                        && !s.PlayerSeen
-                       && Vector3.Distance(s.enemyObject.transform.position, playerTransform.position) <= grenadeThrowDistance;
+                       && Vector3.Distance(s.enemyObject.transform.position, playerTransform.position) <= grenadeThrowDistance
+                       && (weapon == null || !weapon.isReloading);
             })
             .ToList();
+        Debug.Log($"[Debug] Eligible grenade throwers: {string.Join(",", eligible.Select(s => s.enemyObject.name))}");
         if (eligible.Count == 0) return;
-        // pick random excluding last thrower
         var pool = eligible.Where(s => s != lastThrowerStatus).ToList();
+        Debug.Log($"[Debug] Pool after excluding last thrower ({lastThrowerStatus?.enemyObject.name}): {string.Join(",", pool.Select(s => s.enemyObject.name))}");
         if (pool.Count == 0) pool = eligible;
         var chosen = pool[Random.Range(0, pool.Count)];
-        // chance check
+        Debug.Log($"[Debug] Chosen grenade thrower: {chosen.enemyObject.name}");
         if (Random.value <= grenadeThrowChance)
         {
             currentMana = Mathf.Max(0f, currentMana - grenadeManaCost);
             ThrowAbility(chosen, CancellationToken.None).Forget();
         }
         lastThrowerStatus = chosen;
+    }
+
+    private async UniTaskVoid BurstFireLoop()
+    {
+        while (true)
+        {
+            float wait = Random.Range(burstCheckIntervalMin, burstCheckIntervalMax);
+            await UniTask.Delay(TimeSpan.FromSeconds(wait));
+            TryBurstFire();
+        }
+    }
+
+    private void TryBurstFire()
+    {
+        Debug.Log($"[Debug] TryBurstFire: currentMana={currentMana}, burstFireManaCost={burstFireManaCost}, burstFireChance={burstFireChance}");
+        if (burstFireChance <= 0f || currentMana < burstFireManaCost) return;
+        var eligible = enemyStatuses
+            .Where(s => {
+                var eh = s.enemyObject.GetComponent<EnemyHealth>();
+                bool inCritical = eh != null && eh.isCriticalDamage;
+                var weapon = s.enemyObject.GetComponent<EnemyWeapon>();
+                return !s.isDead && !inCritical
+                       && !s.isThrowingAbility
+                       && s.enemyObject.name.StartsWith("L1Soldier")
+                       && s.isPlayerSeen
+                       && s.intruderAlert
+                       && weapon != null && weapon.isBurstFire && !weapon.isReloading;
+            })
+            .ToList();
+        Debug.Log($"[Debug] Eligible burst fire candidates: {string.Join(",", eligible.Select(s => s.enemyObject.name))}");
+        if (eligible.Count == 0) return;
+        var chosen = eligible[Random.Range(0, eligible.Count)];
+        Debug.Log($"[Debug] Chosen burst fire soldier: {chosen.enemyObject.name}");
+        if (Random.value <= burstFireChance)
+        {
+            currentMana = Mathf.Max(0f, currentMana - burstFireManaCost);
+            BurstFireAbility(chosen).Forget();
+        }
+    }
+
+    private async UniTaskVoid BurstFireAbility(EnemyStatus status)
+    {
+        status.isBurstFiring = true;
+        var weapon = status.enemyObject.GetComponent<EnemyWeapon>();
+        if (weapon == null) return;
+        int burstShots = weapon.shotsPerBurst;
+        float originalCooldown = weapon.shotCooldown;
+        weapon.shotCooldown = originalCooldown / 10f; // speed multiplier
+        for (int i = 0; i < burstShots; i++)
+        {
+            if (status.isDead) break;
+            weapon.Shoot();
+            await UniTask.Delay(TimeSpan.FromSeconds(weapon.shotCooldown));
+        }
+        weapon.shotCooldown = originalCooldown;
+        status.isBurstFiring = false;
     }
 
     public List<Vector3> GenerateUniquePath(Vector3 start, Vector3 end)

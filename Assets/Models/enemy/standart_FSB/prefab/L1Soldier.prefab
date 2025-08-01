@@ -84,6 +84,7 @@ Transform:
   - {fileID: 5483941502268589640}
   - {fileID: 615316115807203402}
   - {fileID: 5971228721212012399}
+  - {fileID: 1157374521308635047}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -143,7 +144,7 @@ MonoBehaviour:
   midRouteSwitchCooldown: 3
   ambushChance: 15
   pushChance: 75
-  minPlayerDistance: 3.5
+  minPlayerDistance: 1.5
   retreatDistance: 5
   isCover: 0
   isSit: 0
@@ -284,12 +285,18 @@ MonoBehaviour:
   bulletPrefab: {fileID: 2386755340174646367, guid: 667d5b1471de0c24b8ed23e47c21529c, type: 3}
   bulletSpeed: 55
   bulletDestroyDistance: 65
+  shellPrefab: {fileID: 2950929447053787279, guid: ddd3d070b9126124bbf06b1e3d68bdad, type: 3}
+  isReloading: 0
   shotCooldown: 1
   isShooting: 0
   playerObject: {fileID: 0}
   muzzleFlashPrefab: {fileID: 5857760479252474424, guid: 766f338419bf25e4aaa9edd058d1560c, type: 3}
   muzzleFlashDuration: 0.075
   maxLookAtSpeed: 50
+  shootClip: {fileID: 8300000, guid: d6dd94be227437e44bc0a27c055624db, type: 3}
+  shootVolume: 0.65
+  shootMinDistance: 1
+  shootMaxDistance: 15
 --- !u!114 &1026960863189243718
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3245,6 +3252,37 @@ MonoBehaviour:
   movementThreshold: 15
   decalYOffset: 0.01
   decalLifetime: 5
+--- !u!1 &5939615277489805286
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1157374521308635047}
+  m_Layer: 7
+  m_Name: GrenadeSpawnPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1157374521308635047
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5939615277489805286}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 2.07, z: 0.225}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 705594045422351822}
+  m_RootOrder: 15
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6014418740472979504
 GameObject:
   m_ObjectHideFlags: 0

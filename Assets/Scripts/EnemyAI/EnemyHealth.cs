@@ -36,6 +36,7 @@ public class EnemyHealth : MonoBehaviour
 
     [Header("Death State")]
     public bool isDead = false;
+    public bool diedByFire = false;
 
     [Header("Decal System")]
     public SimpleDecalContainer decalContainer;
@@ -243,6 +244,10 @@ public class EnemyHealth : MonoBehaviour
         // Проверяем смерть
         if (health <= 0f)
         {
+            // Устанавливаем флаг смерти от огня
+            if (damageType == DamageType.Fire)
+                diedByFire = true;
+
             if (UnityEngine.Random.value > 0.5f) DieAlternative();
             else Die();
         }

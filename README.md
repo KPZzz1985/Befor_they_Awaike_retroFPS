@@ -40,6 +40,34 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
    - Added spatialized shooting audio in `EnemyWeapon` and `PM_Shooting` with configurable `shootClip`, `shootVolume`, `shootMinDistance`, and `shootMaxDistance`.
    - Added explosion sound in `BlastProjectile` with `explosionClip`, `explosionVolume`, `explosionMinDistance`, and `explosionMaxDistance`.
 
+9. **Centralized Ammo Inventory**
+   - Created `PlayerInventory` component to manage both clip and reserve ammo per weapon via `AmmoEntry` entries.
+   - `AmmoEntry` holds a `PM_Shooting shooter`, `currentAmmo`, `maxAmmo`, `reserveAmmo`, and `reserveLimit`.
+   - APIs: `AddAmmo`, `GetCurrentAmmo`, `GetMaxAmmo`, `AddReserve`, `RemoveReserve`, and `GetReserveAmmo`.
+   - Fields auto-populate from assigned `shooter` in `Awake()` (manual assignment in inspector).
+
+10. **Pickable Items & Ammo Pickups**
+    - `PickableItem` script supports types: Health, Ammo, Shield, UpgradeCore, Key.
+    - Configurable `amount` and optional `weaponIndex` (-1 for all weapons).
+    - For Ammo items, calls `PlayerInventory.AddReserve(...)` and plays `pickupSound` at `pickupVolume`.
+
+11. **HUD Integration**
+    - `HUDController` displays health and ammo as `clip/reserve` using digit sprite arrays.
+    - Set references: `PlayerHealth`, `WeaponSwitcher`, `PlayerInventory`, `clipDigits`, `slashImage`, `reserveDigits`, and `ammoIcon`.
+    - Automatically hides UI when no weapon is active.
+
+12. **Weapon Refactor for Inventory**
+    - `PM_Shooting` no longer stores local `currentAmmo`; reads/writes from `PlayerInventory`.
+    - Weapon determines its `weaponIndex` on startup and uses `inventory` calls to decrement on shot and refill on reload.
+    - Manual reload (R) and burst reload only allowed when `reserveAmmo > 0`.
+
+13. **Shotgun Multi-Pellet Fix**
+    - `ShootPellet()` updated to loop `pelletCount` times, firing multiple raycasts with spread, restoring proper shotgun behavior.
+
+14. **Blast Projectile Flight Audio**
+    - `BlastProjectile` now plays looped `flightClip` via a second `AudioSource` during flight, stopping it on explosion before playing `explosionClip`.
+    - Configurable `flightVolume`, `flightClip`, and spatial settings align with explosion audio.
+
 ## Unity Package & Dependencies
 
 - **UniTask**: asynchronous toolset installed via OpenUPM registry (package `com.cysharp.unitask`).

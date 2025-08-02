@@ -8,6 +8,10 @@ public class PM_Shooting : MonoBehaviour
     public AudioClip shootClip;
     [Tooltip("Volume of the shooting sound.")]
     [Range(0f,1f)] public float shootVolume = 1f;
+    [Tooltip("Audio clip to play when reload attempted with empty reserve.")]
+    public AudioClip emptyReloadClip;
+    [Tooltip("Volume of the empty reload sound.")]
+    [Range(0f,1f)] public float emptyReloadVolume = 1f;
     private AudioSource shootAudioSource;
     public Transform muzzlePoint;
     public GameObject muzzleFlashPrefab;
@@ -48,7 +52,6 @@ public class PM_Shooting : MonoBehaviour
     public float armedTime = 0.5f;
     // --------------------------------------------
 
-    private int currentAmmo;
     private bool isReloading = false;
     private bool isReloadingSingle = false;
     private bool reloadInterrupted = false;
@@ -66,6 +69,11 @@ public class PM_Shooting : MonoBehaviour
         isReloadingSingle = false;
         reloadInterrupted = false;
     }
+
+    // Add UI integration: expose current ammo values and icon for HUD
+    public int CurrentAmmo => inventory != null ? inventory.GetCurrentAmmo(weaponIndex) : maxAmmo;
+    public int MaxAmmo => inventory != null ? inventory.GetMaxAmmo(weaponIndex) : maxAmmo;
+    public Sprite ammoIcon;
 
     [Tooltip("Сколько секунд ждать после выстрела перед созданием гильзы. 0 = без задержки.")]
     public float shellEjectionDelay = 0f;
@@ -91,9 +99,30 @@ public class PM_Shooting : MonoBehaviour
     public float falloffExponent = 1f;
     // --------------------------------------------
 
+    private PlayerInventory inventory;
+    private int weaponIndex;
+    /// <summary>
+    /// Exposes the index of this weapon in the WeaponSwitcher.
+    /// </summary>
+    public int WeaponIndex => weaponIndex;
+
     private void Start()
     {
-        currentAmmo = maxAmmo;
+        // Initialize inventory reference and weaponIndex based on WeaponSwitcher entries
+        inventory = FindObjectOfType<PlayerInventory>();
+        var ws = FindObjectOfType<WeaponSwitcher>();
+        if (ws != null)
+        {
+            for (int i = 0; i < ws.weapons.Count; i++)
+            {
+                Transform weaponRoot = ws.weapons[i].transform;
+                if (transform.IsChildOf(weaponRoot))
+                {
+                    weaponIndex = i;
+                    break;
+                }
+            }
+        }
         // Initialize audio source for shooting if needed
         shootAudioSource = GetComponent<AudioSource>();
         if (shootAudioSource == null) shootAudioSource = gameObject.AddComponent<AudioSource>();
@@ -103,7 +132,18 @@ public class PM_Shooting : MonoBehaviour
 
     private void Update()
     {
-        // --- Если сейчас идёт pop-in-one (попатронная) перезарядка, отслеживаем Fire1 для прерывания ---
+        // Empty click on fire attempt when no ammo in clip and no reserve
+        if (Input.GetButtonDown("Fire1") && Time.time >= nextFireTime)
+        {
+            if (CurrentAmmo <= 0 && (inventory == null || inventory.GetReserveAmmo(WeaponIndex) <= 0))
+            {
+                if (emptyReloadClip != null && shootAudioSource != null)
+                    shootAudioSource.PlayOneShot(emptyReloadClip, emptyReloadVolume);
+                return;
+            }
+        }
+
+        // Если сейчас идёт pop-in-one (попатронная) перезарядка, отслеживаем Fire1 для прерывания ---
         if (isReloadingSingle)
         {
             if (Input.GetButtonDown("Fire1"))
@@ -115,13 +155,16 @@ public class PM_Shooting : MonoBehaviour
         if (isReloading)
             return;
 
-        // --- Ручная перезарядка клавишей R ---
-        if (Input.GetKeyDown(KeyCode.R) && currentAmmo < maxAmmo)
+        // --- Ручная перезарядка клавишей R (только если есть запас) ---
+        if (Input.GetKeyDown(KeyCode.R) && CurrentAmmo < MaxAmmo)
         {
-            if (isShotgunMode && isSingleCartridgeReloading)
-                StartCoroutine(ReloadSingle());
-            else
-                StartCoroutine(Reload());
+            if (inventory != null && inventory.GetReserveAmmo(WeaponIndex) > 0)
+            {
+                if (isShotgunMode && isSingleCartridgeReloading)
+                    StartCoroutine(ReloadSingle());
+                else
+                    StartCoroutine(Reload());
+            }
             return;
         }
 
@@ -130,13 +173,16 @@ public class PM_Shooting : MonoBehaviour
         {
             if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
             {
-                // Если магазин пуст, ждем нажатия, чтобы запустить перезарядку
-                if (currentAmmo <= 0)
+                // Если магазин пуст и есть патроны в резерве — перезарядка
+                if (CurrentAmmo <= 0)
                 {
-                    if (isShotgunMode && isSingleCartridgeReloading)
-                        StartCoroutine(ReloadSingle());
-                    else
-                        StartCoroutine(Reload());
+                    if (inventory != null && inventory.GetReserveAmmo(WeaponIndex) > 0)
+                    {
+                        if (isShotgunMode && isSingleCartridgeReloading)
+                            StartCoroutine(ReloadSingle());
+                        else
+                            StartCoroutine(Reload());
+                    }
                     return;
                 }
 
@@ -149,13 +195,16 @@ public class PM_Shooting : MonoBehaviour
             // --- Обычный одиночный выстрел ---
             if (Input.GetButtonDown("Fire1") && Time.time >= nextFireTime)
             {
-                // Если магазин пуст, запускаем перезарядку при попытке выстрела
-                if (currentAmmo <= 0)
+                // Если магазин пуст и есть патроны в резерве — перезарядка
+                if (CurrentAmmo <= 0)
                 {
-                    if (isShotgunMode && isSingleCartridgeReloading)
-                        StartCoroutine(ReloadSingle());
-                    else
-                        StartCoroutine(Reload());
+                    if (inventory != null && inventory.GetReserveAmmo(WeaponIndex) > 0)
+                    {
+                        if (isShotgunMode && isSingleCartridgeReloading)
+                            StartCoroutine(ReloadSingle());
+                        else
+                            StartCoroutine(Reload());
+                    }
                     return;
                 }
 
@@ -186,7 +235,9 @@ public class PM_Shooting : MonoBehaviour
         isShooting = true;
         StartCoroutine(StopShooting());
 
-        currentAmmo--;
+        // decrement ammo in inventory
+        if (inventory != null)
+            inventory.AddAmmo(weaponIndex, -1);
         animatorScript.animator.SetTrigger("isShoot");
         // Play shooting sound
         if (shootClip != null && shootAudioSource != null)
@@ -198,27 +249,16 @@ public class PM_Shooting : MonoBehaviour
         if (isProjectileMode && projectilePrefab != null)
         {
             if (isShotgunMode)
-            {
-                for (int i = 0; i < pelletCount; i++)
-                    SpawnProjectileWithSpread();
-            }
+                SpawnProjectileWithSpread();
             else
-            {
                 SpawnProjectile();
-            }
         }
-        // 2) Raycast Mode (обычный или Shotgun)
         else
         {
             if (isShotgunMode)
-            {
-                for (int i = 0; i < pelletCount; i++)
-                    ShootPellet();
-            }
+                ShootPellet();
             else
-            {
-                PerformRaycast(muzzlePoint.forward);
-            }
+                PerformRaycast(transform.forward);
         }
 
         // Отдача камеры
@@ -259,8 +299,12 @@ public class PM_Shooting : MonoBehaviour
 
     private void ShootPellet()
     {
-        Vector3 pelletDirection = muzzlePoint.forward + Random.insideUnitSphere * spread;
-        PerformRaycast(pelletDirection);
+        // Fire multiple pellets based on pelletCount with spread
+        for (int i = 0; i < pelletCount; i++)
+        {
+            Vector3 pelletDirection = muzzlePoint.forward + Random.insideUnitSphere * spread;
+            PerformRaycast(pelletDirection);
+        }
     }
 
     private void PerformRaycast(Vector3 direction)
@@ -312,7 +356,13 @@ public class PM_Shooting : MonoBehaviour
 
         yield return new WaitForSeconds(reloadTime);
 
-        currentAmmo = maxAmmo;
+        if (inventory != null)
+        {
+            int needed = MaxAmmo - CurrentAmmo;
+            int taken = inventory.RemoveReserve(WeaponIndex, needed);
+            if (taken > 0)
+                inventory.AddAmmo(WeaponIndex, taken);
+        }
         isReloading = false;
     }
 
@@ -321,17 +371,14 @@ public class PM_Shooting : MonoBehaviour
         isReloadingSingle = true;
         reloadInterrupted = false;
 
-        int shellsNeeded = maxAmmo - currentAmmo;
+        int shellsNeeded = MaxAmmo - CurrentAmmo;
         for (int i = 0; i < shellsNeeded; i++)
         {
-            // Если игрок прервал попатронную перезарядку — выходим
             if (reloadInterrupted)
                 break;
 
-            // Проигрываем триггер «зарядил один патрон»
             animatorScript.animator.SetTrigger("isReloadingSingle");
 
-            // Ждем singleReloadTime без проверок Input.GetButtonDown
             float timer = 0f;
             while (timer < singleReloadTime)
             {
@@ -339,13 +386,16 @@ public class PM_Shooting : MonoBehaviour
                 yield return null;
             }
 
-            // Вставляем один патрон
-            currentAmmo++;
-            if (currentAmmo >= maxAmmo)
-                break;
+            if (inventory != null)
+            {
+                int taken = inventory.RemoveReserve(WeaponIndex, 1);
+                if (taken > 0)
+                    inventory.AddAmmo(WeaponIndex, taken);
+                if (CurrentAmmo >= MaxAmmo || taken == 0)
+                    break;
+            }
         }
 
-        // После последнего досылания патрона — анимация взведения
         animatorScript.animator.SetTrigger("isArmed");
         float armedTimer = 0f;
         while (armedTimer < armedTime)

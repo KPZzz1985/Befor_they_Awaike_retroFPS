@@ -70,7 +70,7 @@ Material:
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
-    - _FogDensity: 0.05
+    - _FogDensity: 0.076
     - _FogEnd: 109.22
     - _FogStart: 2.4
     - _GlossMapScale: 1

@@ -80,14 +80,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   radius: 0.25
-  damage: 450
+  damage: 75
   affectedLayers:
     serializedVersion: 2
     m_Bits: 3785
   explosionEffectPrefab: {fileID: 1000011797152326, guid: acf39d9f4addf294d93fa56fa373961b, type: 3}
   destroyDelay: 0.2
   sphereMeshFilter: {fileID: 519686475837510214}
-  explosionRingMaterial: {fileID: 0}
+  explosionRingMaterial: {fileID: 2100000, guid: 8b0a5d50c9faeed4c84f33a619087484, type: 2}
   expandDuration: 0.2
   maxExpandScale: 3.5
   falloffExponent: 1
@@ -113,6 +113,8 @@ MonoBehaviour:
   explosionVolume: 1
   explosionMinDistance: 1
   explosionMaxDistance: 15
+  flightClip: {fileID: 8300000, guid: 80a60c02f3fa0ce4ea311aa6c2172dbd, type: 3}
+  flightVolume: 0.5
 --- !u!1 &2418520891874665196
 GameObject:
   m_ObjectHideFlags: 0

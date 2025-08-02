@@ -208,12 +208,12 @@ MonoBehaviour:
   maxPuddleGrowthRate: 0.1
   bloodPuddleMinScale: 1.5
   bloodPuddleMaxScale: 2.5
-  minHealth: 250
-  maxHealth: 350
+  minHealth: 100
+  maxHealth: 200
   HealthPercentage: 0
   health: 0
   initialHealth: 0
-  lowHealthThreshold: 50
+  lowHealthThreshold: 25
   capsuleCollider: {fileID: 2518292637693544435, guid: 274ef97902ebdbe499cfe1288f402e33, type: 3}
   navMeshAgent: {fileID: 1026960863189243717}
   enemyShootingScript: {fileID: 1026960863189243712}

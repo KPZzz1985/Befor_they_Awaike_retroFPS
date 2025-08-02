@@ -2,9 +2,9 @@ using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// PlayerHealth отвечает за здоровье игрока, работу с камерой, туманом и смертью.
-/// Мы добавляем перегрузку TakeDamage(int damage, DamageType damageType), 
-/// но обрабатываем её точно так же, как обычный урон.
+/// PlayerHealth пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+/// пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TakeDamage(int damage, DamageType damageType), 
+/// пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
 /// :contentReference[oaicite:1]{index=1}
 /// </summary>
 public class PlayerHealth : MonoBehaviour
@@ -53,7 +53,7 @@ public class PlayerHealth : MonoBehaviour
     }
 
     /// <summary>
-    /// Обычный метод получения урона, который уже был.
+    /// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ.
     /// </summary>
     public void TakeDamage(int damage)
     {
@@ -72,12 +72,20 @@ public class PlayerHealth : MonoBehaviour
     }
 
     /// <summary>
-    /// Новая перегрузка, принимающая DamageType, но обрабатывающая так же, как обычный урон.
+    /// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ DamageType, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
     /// </summary>
     public void TakeDamage(int damage, DamageType damageType)
     {
-        // Для игрока тип урона неважен — вызываем старый метод
+        // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         TakeDamage(damage);
+    }
+
+    /// <summary>
+    /// Restores player health by the specified amount.
+    /// </summary>
+    public void Heal(int healAmount)
+    {
+        HealthPercentage += ((float)healAmount / maxHealth) * 100f;
     }
 
     private void CameraShake()

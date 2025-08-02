@@ -78,7 +78,13 @@ public class BlastProjectile : MonoBehaviour
     public float explosionMinDistance = 1f;
     [Tooltip("Maximum distance for 3D sound attenuation.")]
     public float explosionMaxDistance = 15f;
+    [Header("Flight Audio Settings")]
+    [Tooltip("Audio clip to play while projectile is flying.")]
+    public AudioClip flightClip;
+    [Tooltip("Volume for the flight sound (0-1).")]
+    [Range(0f,1f)] public float flightVolume = 1f;
     private AudioSource explosionAudioSource;
+    private AudioSource flightAudioSource;
     private bool isArmed = false;   //   (    )
     private bool hasExploded = false;
 
@@ -94,6 +100,17 @@ public class BlastProjectile : MonoBehaviour
         explosionAudioSource.minDistance = explosionMinDistance;
         explosionAudioSource.maxDistance = explosionMaxDistance;
         explosionAudioSource.playOnAwake = false;
+        // Initialize flight audio source
+        flightAudioSource = gameObject.AddComponent<AudioSource>();
+        flightAudioSource.clip = flightClip;
+        flightAudioSource.playOnAwake = false;
+        flightAudioSource.loop = true;
+        flightAudioSource.spatialBlend = 1f;
+        flightAudioSource.minDistance = explosionMinDistance;
+        flightAudioSource.maxDistance = explosionMaxDistance;
+        flightAudioSource.volume = flightVolume;
+        if (flightClip != null)
+            flightAudioSource.Play();
     }
 
     private IEnumerator ArmAfterDelay()
@@ -133,6 +150,9 @@ public class BlastProjectile : MonoBehaviour
         {
             Instantiate(explosionEffectPrefab, explosionCenter, Quaternion.identity);
         }
+        // Stop flight audio
+        if (flightAudioSource != null)
+            flightAudioSource.Stop();
         // Play explosion sound
         if (explosionClip != null && explosionAudioSource != null)
             explosionAudioSource.PlayOneShot(explosionClip, explosionVolume);
@@ -433,9 +453,19 @@ public class BlastProjectile : MonoBehaviour
                     }
                     else
                     {
-                        // ���� ������� ��-���� (�����, ������ ������ � �.�.), 
-                        // ��������� ������ ������, ���� �����.
-                        // ��������, ����� ����� ApplyFalloffDamage(hit, center) ��� �������� ��� ����� ����������.
+                        // apply damage to any Damageable component
+                        Damageable damageable = hit.GetComponent<Damageable>();
+                        if (damageable != null)
+                        {
+                            ApplyFalloffDamage(hit, center);
+                        }
+                        else
+                        {
+                            // apply damage to player health if present
+                            PlayerHealth ph = hit.GetComponent<PlayerHealth>();
+                            if (ph != null)
+                                ApplyFalloffDamage(hit, center);
+                        }
                         hasTakenDamage[i] = true;
                     }
                 }

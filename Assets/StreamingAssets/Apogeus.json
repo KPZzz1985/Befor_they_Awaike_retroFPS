@@ -2,7 +2,7 @@
     "ammoCount": 12,
     "reloadTime": 2.53,
     "range": 25.0,
-    "damagePerBullet": 25,
+    "damagePerBullet": 5,
     "accuracy": 0.01,
     "isSingleShot": true,
     "isBurstFire": true,

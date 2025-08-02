@@ -80,6 +80,10 @@ public class EnemyWeapon : MonoBehaviour
         {
             Debug.LogError("EnemyHealth component not found on " + gameObject.name);
         }
+        else
+        {
+            enemyHealth.OnDeath += OnEnemyDeath;
+        }
 
         enemyMovement = GetComponent<EnemyMovement2>();
         if (enemyMovement == null)
@@ -231,6 +235,9 @@ public class EnemyWeapon : MonoBehaviour
                     {
                         currentWeaponPrefabName = child.gameObject.name;
                     }
+                    // Assign attachedWeapon for scene-placed weapons
+                    attachedWeapon = child.gameObject;
+                    isWeaponAttached = true;
                     return;
                 }
             }
@@ -447,5 +454,20 @@ public class EnemyWeapon : MonoBehaviour
         float rotationSpeed = Mathf.Lerp(1f, maxLookAtSpeed, accuracy);
         muzzle.rotation = Quaternion.RotateTowards(muzzle.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         Debug.DrawLine(muzzle.position, targetPositionWithOffset, Color.magenta);
+    }
+
+    /// <summary>
+    /// Detaches the weapon when the enemy dies.
+    /// </summary>
+    private void OnEnemyDeath(EnemyHealth deadEnemy)
+    {
+        if (attachedWeapon != null)
+        {
+            attachedWeapon.transform.parent = null;
+            if (attachedWeapon.GetComponent<Rigidbody>() == null)
+                attachedWeapon.AddComponent<Rigidbody>();
+            attachedWeapon = null;
+            isWeaponAttached = false;
+        }
     }
 }

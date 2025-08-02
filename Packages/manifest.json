@@ -3,10 +3,14 @@
     {
       "name": "openupm",
       "url": "https://package.openupm.com",
-      "scopes": ["com.cysharp"]
+      "scopes": [
+        "com.cysharp"
+      ]
     }
   ],
   "dependencies": {
+    "com.cysharp.unitask": "2.3.3",
+    "com.unity.2d.sprite": "1.0.0",
     "com.unity.collab-proxy": "1.17.7",
     "com.unity.feature.development": "1.0.1",
     "com.unity.ide.rider": "3.0.18",
@@ -48,7 +52,6 @@
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.modules.xr": "1.0.0",
-    "com.cysharp.unitask": "2.3.3"
+    "com.unity.modules.xr": "1.0.0"
   }
 }

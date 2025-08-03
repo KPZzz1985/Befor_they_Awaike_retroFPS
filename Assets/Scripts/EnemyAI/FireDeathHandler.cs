@@ -8,7 +8,7 @@ using UnityEngine.AI;
 public class FireDeathHandler : IDeathHandler
 {
     [Header("Fire Death Settings")]
-    private float minBurnDuration = 4f;        // Минимальное время горения
+    private float minBurnDuration = 2f;        // Минимальное время горения
     private float maxBurnDuration = 6f;        // Максимальное время горения
     private float minPauseTime = 1f;           // Минимальное время паузы
     private float maxPauseTime = 1.5f;         // Максимальное время паузы

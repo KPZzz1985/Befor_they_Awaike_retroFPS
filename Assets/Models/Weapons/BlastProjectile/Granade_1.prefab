@@ -80,7 +80,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   radius: 0.25
-  damage: 75
+  damage: 100
   affectedLayers:
     serializedVersion: 2
     m_Bits: 3785

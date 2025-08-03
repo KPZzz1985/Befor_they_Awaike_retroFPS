@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using Cysharp.Threading.Tasks;
 
 /// <summary>
 /// PlayerHealth �������� �� �������� ������, ������ � �������, ������� � �������.
@@ -15,10 +16,15 @@ public class PlayerHealth : MonoBehaviour
     public float damageCameraShakeForce = 5f;
     private Vector3 originalCameraPosition;
 
+    [Header("Fog Effects (DEPRECATED - УСТАРЕЛО)")]
+    [Tooltip("УСТАРЕЛО: Fog эффекты заменены на UI плашки для оптимизации")]
     public SimpleFogEffect fogEffect;
+    [Tooltip("УСТАРЕЛО: Цвет тумана больше не используется динамически")]
     public Color initialFogColor;
 
+    [System.Obsolete("Заменен на UI анимации в HUDController")]
     public float fogCooldownDuration = 5f;
+    [System.Obsolete("Заменен на UI анимации в HUDController")]
     private Coroutine fogColorCooldownCoroutine;
 
     public float HealthPercentage
@@ -33,9 +39,18 @@ public class PlayerHealth : MonoBehaviour
     public Camera playerCamera;
 
     public FirstPersonController_CC fpsController;
+    
+    [Header("UI References")]
+    [Tooltip("Ссылка на HUDController для UI эффектов")]
+    public HUDController hudController;
 
+    [Header("Pixel Effects (DEPRECATED - УСТАРЕЛО)")]
+    [Tooltip("УСТАРЕЛО: Пиксельные эффекты заменены на UI затемнение для оптимизации")]
+    [System.Obsolete("Заменен на UI затемнение в HUDController")]
     public Material pixelEffectMaterial;
+    [System.Obsolete("Заменен на UI затемнение в HUDController")]
     public float pixelationTime = 5f;
+    [System.Obsolete("Заменен на UI затемнение в HUDController")]
     public Color[] deathColors = new Color[4];
 
     private void Start()
@@ -50,6 +65,10 @@ public class PlayerHealth : MonoBehaviour
 
         if (fogEffect != null && fogEffect.fogMaterial != null)
             fogEffect.fogMaterial.SetColor("_FogColor", initialFogColor);
+            
+        // Автоматически находим HUDController если не назначен
+        if (hudController == null)
+            hudController = FindObjectOfType<HUDController>();
     }
 
     /// <summary>
@@ -64,19 +83,21 @@ public class PlayerHealth : MonoBehaviour
         }
         else
         {
+            // Легкий эффект встряски камеры
             CameraShake();
-            if (fogColorCooldownCoroutine != null)
-                StopCoroutine(fogColorCooldownCoroutine);
-            UpdateFogColor();
+            
+            // Новый UI эффект вместо тяжелого Fog
+            TriggerDamageUIEffect();
         }
     }
 
     /// <summary>
-    /// ����� ����������, ����������� DamageType, �� �������������� ��� ��, ��� ������� ����.
+    /// Новый перегруженный, принимающий DamageType, но обрабатывает пока так же, как простой урон.
+    /// ОПТИМИЗИРОВАНО: убрана тяжелая логика с Fog, добавлен UI эффект.
     /// </summary>
     public void TakeDamage(int damage, DamageType damageType)
     {
-        // ��� ������ ��� ����� ������� � �������� ������ �����
+        // В будущем можно добавить специфичные эффекты для разных типов урона
         TakeDamage(damage);
     }
 
@@ -94,18 +115,35 @@ public class PlayerHealth : MonoBehaviour
             StartCoroutine(ShakeCameraEffect());
     }
 
+    /// <summary>
+    /// УСТАРЕВШИЙ МЕТОД: UpdateFogColor больше не используется (оптимизация).
+    /// Оставлен для совместимости, заменен на UI эффекты в HUDController.
+    /// </summary>
+    [System.Obsolete("Использовать TriggerDamageUIEffect() вместо UpdateFogColor для лучшей производительности")]
     private void UpdateFogColor()
     {
+        // ЗАКОММЕНТИРОВАНО: тяжелая операция с Fog материалом
+        /*
         if (fogEffect != null && fogEffect.fogMaterial != null)
         {
             Color targetFogColor = Color.Lerp(initialFogColor, Color.red, 1f - HealthPercentage / 100f);
             fogEffect.fogMaterial.SetColor("_FogColor", targetFogColor);
             fogColorCooldownCoroutine = StartCoroutine(FogColorCooldown());
         }
+        */
+        
+        Debug.LogWarning("UpdateFogColor() вызван, но метод устарел. Используйте UI эффекты в HUDController.");
     }
 
+    /// <summary>
+    /// УСТАРЕВШИЙ МЕТОД: FogColorCooldown больше не используется (оптимизация).
+    /// Оставлен для совместимости, заменен на UI эффекты в HUDController.
+    /// </summary>
+    [System.Obsolete("Заменен на UI анимации в HUDController через UniTask")]
     private IEnumerator FogColorCooldown()
     {
+        // ЗАКОММЕНТИРОВАНО: тяжелая операция с Fog материалом каждый кадр
+        /*
         float elapsedTime = 0;
         Color startColor = fogEffect.fogMaterial.GetColor("_FogColor");
 
@@ -118,6 +156,10 @@ public class PlayerHealth : MonoBehaviour
         }
 
         fogEffect.fogMaterial.SetColor("_FogColor", initialFogColor);
+        */
+        
+        Debug.LogWarning("FogColorCooldown() вызван, но метод устарел. Используйте UI анимации в HUDController.");
+        yield break;
     }
 
     private IEnumerator ShakeCameraEffect()
@@ -145,19 +187,31 @@ public class PlayerHealth : MonoBehaviour
 
     private void Die()
     {
-        if (cameraHolderScript == null)
-        {
-            Debug.LogError("cameraHolderScript is null");
-            return;
-        }
-        cameraHolderScript.enabled = false;
+        Debug.Log("Player died!");
+        
+        // УПРОЩЕННАЯ логика смерти: только отключаем управление камерой
+        if (cameraHolderScript != null)
+            cameraHolderScript.enabled = false;
+            
+        // Отделяем камеру от игрока с небольшим импульсом
+        DetachCameraWithImpulse();
+        
+        // Запускаем UI эффект смерти (затемнение экрана)
+        TriggerDeathUIEffect();
+        
+        // Отключаем управление игроком
+        if (fpsController != null)
+            fpsController.enabled = false;
+    }
 
-        if (playerCamera == null)
-        {
-            Debug.LogError("playerCamera is null");
-            return;
-        }
-
+    /// <summary>
+    /// Отделяет камеру от игрока с небольшим физическим импульсом
+    /// </summary>
+    private void DetachCameraWithImpulse()
+    {
+        if (playerCamera == null) return;
+        
+        // Добавляем физику к камере
         Rigidbody camRb = playerCamera.gameObject.GetComponent<Rigidbody>();
         if (camRb == null)
             camRb = playerCamera.gameObject.AddComponent<Rigidbody>();
@@ -166,49 +220,33 @@ public class PlayerHealth : MonoBehaviour
         if (camCollider == null)
             camCollider = playerCamera.gameObject.AddComponent<BoxCollider>();
 
-        float sideForce = Random.Range(0, 2) == 0 ? 1f : -1f;
+        // Применяем небольшой импульс
+        float sideForce = UnityEngine.Random.Range(0, 2) == 0 ? 1f : -1f;
         Vector3 impulseDirection = new Vector3(sideForce, 0, -1f).normalized;
         camRb.AddRelativeForce(impulseDirection * 1f, ForceMode.Impulse);
-
-        Debug.Log("Player died!");
-
-        Invoke("DisablePlayer", 0.25f);
     }
-
-    private void DisablePlayer()
+    
+    /// <summary>
+    /// Запускает UI эффект вспышки при получении урона
+    /// </summary>
+    private void TriggerDamageUIEffect()
     {
-        if (fpsController != null)
-            fpsController.enabled = false;
-
-        StartCoroutine(PixelateDeathEffect());
-    }
-
-    private IEnumerator DestroyPlayer()
-    {
-        yield return new WaitForSeconds(3f);
-        gameObject.SetActive(false);
-    }
-
-    private IEnumerator PixelateDeathEffect()
-    {
-        Debug.LogWarning("Pixelate");
-        float elapsedTime = 0f;
-        while (elapsedTime < pixelationTime)
+        if (hudController != null)
         {
-            float progress = elapsedTime / pixelationTime;
-            pixelEffectMaterial.SetFloat("_PixelSize", Mathf.Lerp(1, 100, progress));
-            for (int i = 0; i < 4; i++)
-            {
-                pixelEffectMaterial.SetColor($"_ColorArray[{i}]", deathColors[i]);
-            }
-            elapsedTime += Time.deltaTime;
-            yield return null;
+            // Запускаем асинхронно, не блокируя основной поток
+            hudController.ShowDamageFlash().Forget();
         }
-        DisablePlayerFinal();
     }
-
-    private void DisablePlayerFinal()
+    
+    /// <summary>
+    /// Запускает UI эффект затемнения при смерти
+    /// </summary>
+    private void TriggerDeathUIEffect()
     {
-        gameObject.SetActive(false);
+        if (hudController != null)
+        {
+            // Запускаем асинхронно, не блокируя основной поток
+            hudController.ShowDeathOverlay().Forget();
+        }
     }
 }

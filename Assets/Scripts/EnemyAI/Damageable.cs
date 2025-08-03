@@ -82,6 +82,7 @@ public class Damageable : MonoBehaviour
     private bool spawnAllowed = true;          // To prevent multiple attached object spawns
     private bool hasDismemberedObjectSpawned = false;
     private bool hasAttachedObjectSpawned = false;
+    private bool hasSpecialDeathTexture = false;  // Флаг: применена ли специальная текстура смерти
     private Vector3 spawnPosition;             // Computed spawn position for dismembered objects
 
     private Queue<float> damageQueue = new Queue<float>();  // Queue of incoming damage amounts
@@ -196,9 +197,17 @@ public class Damageable : MonoBehaviour
 
     /// <summary>
     /// Cycles wound textures on each hit.
+    /// НЕ меняет текстуры если уже применена специальная текстура смерти.
     /// </summary>
     private void ChangeWoundTextureOnDamage()
     {
+        // БЛОКИРУЕМ смену текстур если уже применена специальная текстура смерти
+        if (hasSpecialDeathTexture)
+        {
+            Debug.Log($"ChangeWoundTextureOnDamage заблокирован на {name} - уже применена специальная текстура смерти ({currentSpecialDeathType})");
+            return;
+        }
+        
         if (WoundMeshes == null || WoundMeshes.Length == 0) return;
 
         if (meshToChangeIndex >= WoundMeshes.Length)
@@ -256,10 +265,11 @@ public class Damageable : MonoBehaviour
             }
         }
         
-        // Обновляем дебаг информацию
+        // Обновляем дебаг информацию и устанавливаем флаг защиты
         currentSpecialDeathType = damageType.ToString();
+        hasSpecialDeathTexture = true;  // БЛОКИРУЕМ дальнейшие смены текстур НАВСЕГДА
         
-        Debug.Log($"Применена НАВСЕГДА специальная текстура {matchingTexture.specialDeathTexture.name} для типа {damageType} на {appliedCount} мешей компонента {name}");
+        Debug.Log($"Применена НАВСЕГДА специальная текстура {matchingTexture.specialDeathTexture.name} для типа {damageType} на {appliedCount} мешей компонента {name}. Обычные текстуры больше не будут меняться!");
     }
     
     /// <summary>
@@ -269,6 +279,7 @@ public class Damageable : MonoBehaviour
     {
         SetInitialTextures();
         currentSpecialDeathType = "None";
+        hasSpecialDeathTexture = false;  // Сбрасываем флаг защиты (НО ЭТОТ МЕТОД НЕ ДОЛЖЕН ВЫЗЫВАТЬСЯ)
         Debug.Log($"Сброшены текстуры к начальным на {name} (НО ЭТОГО НЕ ДОЛЖНО ПРОИСХОДИТЬ - ТЕКСТУРЫ ДОЛЖНЫ ОСТАТЬСЯ НАВСЕГДА)");
     }
 

@@ -121,16 +121,30 @@ public class HUDController : MonoBehaviour
     {
         if (damageOverlay != null)
         {
-            // Красная плашка для урона, изначально прозрачная
+            // Растягиваем плашку урона на весь экран
+            var rt = damageOverlay.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
             damageOverlay.color = new Color(1f, 0f, 0f, 0f);
             damageOverlay.enabled = true;
+            // Выводим поверх всех UI
+            damageOverlay.transform.SetAsLastSibling();
         }
         
         if (deathOverlay != null)
         {
-            // Черная плашка для смерти, изначально прозрачная
+            // Растягиваем плашку смерти на весь экран
+            var rt2 = deathOverlay.rectTransform;
+            rt2.anchorMin = Vector2.zero;
+            rt2.anchorMax = Vector2.one;
+            rt2.offsetMin = Vector2.zero;
+            rt2.offsetMax = Vector2.zero;
             deathOverlay.color = new Color(0f, 0f, 0f, 0f);
             deathOverlay.enabled = true;
+            // Выводим поверх всех UI
+            deathOverlay.transform.SetAsLastSibling();
         }
     }
     
@@ -139,7 +153,13 @@ public class HUDController : MonoBehaviour
     /// </summary>
     public async UniTask ShowDamageFlash()
     {
-        if (damageOverlay == null) return;
+        if (damageOverlay == null) 
+        {
+            Debug.LogError("HUDController: damageOverlay не назначен в Inspector!");
+            return;
+        }
+        
+        Debug.Log($"HUDController: Запуск эффекта урона. damageOverlay активен: {damageOverlay.enabled}");
         
         // Плавное появление
         float halfDuration = damageFlashDuration * 0.5f;
@@ -149,6 +169,8 @@ public class HUDController : MonoBehaviour
         
         // Fade out обратно к прозрачности
         await FadeOverlay(damageOverlay, maxDamageAlpha, 0f, (int)halfDuration);
+        
+        Debug.Log("HUDController: Эффект урона завершен");
     }
     
     /// <summary>
@@ -156,12 +178,18 @@ public class HUDController : MonoBehaviour
     /// </summary>
     public async UniTask ShowDeathOverlay()
     {
-        if (deathOverlay == null) return;
+        if (deathOverlay == null) 
+        {
+            Debug.LogError("HUDController: deathOverlay не назначен в Inspector!");
+            return;
+        }
+        
+        Debug.Log($"HUDController: Запуск эффекта смерти. deathOverlay активен: {deathOverlay.enabled}");
         
         // Плавное затемнение до полной черноты
         await FadeOverlay(deathOverlay, 0f, 1f, deathFadeDuration);
         
-        Debug.Log("Смерть игрока: экран полностью затемнен");
+        Debug.Log("HUDController: Смерть игрока - экран полностью затемнен");
     }
     
     /// <summary>
@@ -175,6 +203,8 @@ public class HUDController : MonoBehaviour
         Color endColor = new Color(startColor.r, startColor.g, startColor.b, toAlpha);
         startColor.a = fromAlpha;
         
+        Debug.Log($"FadeOverlay: {overlay.name} от Alpha {fromAlpha:F2} до {toAlpha:F2} за {durationMs}мс");
+        
         float elapsedTime = 0f;
         float duration = durationMs / 1000f; // Конвертируем в секунды
         
@@ -183,12 +213,14 @@ public class HUDController : MonoBehaviour
             elapsedTime += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsedTime / duration);
             
-            overlay.color = Color.Lerp(startColor, endColor, progress);
+            Color currentColor = Color.Lerp(startColor, endColor, progress);
+            overlay.color = currentColor;
             
             await UniTask.Yield(); // Ждем следующий кадр
         }
         
         // Устанавливаем финальный цвет
         overlay.color = endColor;
+        Debug.Log($"FadeOverlay завершен: {overlay.name} Alpha = {endColor.a:F2}");
     }
 }

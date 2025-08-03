@@ -63,16 +63,22 @@ public class PlayerHealth : MonoBehaviour
         if (playerCamera != null)
             originalCameraPosition = playerCamera.transform.localPosition;
 
+        // Включаем SimpleFogEffect для работы с декалями
         if (fogEffect != null && fogEffect.fogMaterial != null)
+        {
             fogEffect.fogMaterial.SetColor("_FogColor", initialFogColor);
+            fogEffect.enabled = true;
+            Debug.Log("PlayerHealth: SimpleFogEffect компонент включен для работы с декалями");
+        }
             
         // Автоматически находим HUDController если не назначен
         if (hudController == null)
             hudController = FindObjectOfType<HUDController>();
+            
     }
 
     /// <summary>
-    /// ������� ����� ��������� �����, ������� ��� ���.
+    ///    ,   .
     /// </summary>
     public void TakeDamage(int damage)
     {
@@ -122,15 +128,8 @@ public class PlayerHealth : MonoBehaviour
     [System.Obsolete("Использовать TriggerDamageUIEffect() вместо UpdateFogColor для лучшей производительности")]
     private void UpdateFogColor()
     {
-        // ЗАКОММЕНТИРОВАНО: тяжелая операция с Fog материалом
-        /*
-        if (fogEffect != null && fogEffect.fogMaterial != null)
-        {
-            Color targetFogColor = Color.Lerp(initialFogColor, Color.red, 1f - HealthPercentage / 100f);
-            fogEffect.fogMaterial.SetColor("_FogColor", targetFogColor);
-            fogColorCooldownCoroutine = StartCoroutine(FogColorCooldown());
-        }
-        */
+        // ПОЛНОСТЬЮ ОТКЛЮЧЕНО: тяжелая операция с Fog материалом заменена на UI эффекты
+        // СТАРЫЙ КОД УБРАН ПОЛНОСТЬЮ - больше НЕ используется fogColorCooldownCoroutine
         
         Debug.LogWarning("UpdateFogColor() вызван, но метод устарел. Используйте UI эффекты в HUDController.");
     }
@@ -142,21 +141,7 @@ public class PlayerHealth : MonoBehaviour
     [System.Obsolete("Заменен на UI анимации в HUDController через UniTask")]
     private IEnumerator FogColorCooldown()
     {
-        // ЗАКОММЕНТИРОВАНО: тяжелая операция с Fog материалом каждый кадр
-        /*
-        float elapsedTime = 0;
-        Color startColor = fogEffect.fogMaterial.GetColor("_FogColor");
-
-        while (elapsedTime < fogCooldownDuration)
-        {
-            elapsedTime += Time.deltaTime;
-            Color newColor = Color.Lerp(startColor, initialFogColor, elapsedTime / fogCooldownDuration);
-            fogEffect.fogMaterial.SetColor("_FogColor", newColor);
-            yield return null;
-        }
-
-        fogEffect.fogMaterial.SetColor("_FogColor", initialFogColor);
-        */
+        // ПОЛНОСТЬЮ ОТКЛЮЧЕНО: больше НЕ используется Fog система
         
         Debug.LogWarning("FogColorCooldown() вызван, но метод устарел. Используйте UI анимации в HUDController.");
         yield break;
@@ -233,8 +218,13 @@ public class PlayerHealth : MonoBehaviour
     {
         if (hudController != null)
         {
+            Debug.Log("PlayerHealth: Запуск UI эффекта урона через HUDController");
             // Запускаем асинхронно, не блокируя основной поток
             hudController.ShowDamageFlash().Forget();
+        }
+        else
+        {
+            Debug.LogError("PlayerHealth: HUDController не найден! UI эффект урона не сработает.");
         }
     }
     
@@ -245,8 +235,13 @@ public class PlayerHealth : MonoBehaviour
     {
         if (hudController != null)
         {
+            Debug.Log("PlayerHealth: Запуск UI эффекта смерти через HUDController");
             // Запускаем асинхронно, не блокируя основной поток
             hudController.ShowDeathOverlay().Forget();
+        }
+        else
+        {
+            Debug.LogError("PlayerHealth: HUDController не найден! UI эффект смерти не сработает.");
         }
     }
 }

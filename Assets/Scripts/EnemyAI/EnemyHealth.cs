@@ -36,7 +36,31 @@ public class EnemyHealth : MonoBehaviour
 
     [Header("Death State")]
     public bool isDead = false;
-    public bool diedByFire = false;
+    public bool isHandlingDeath = false;  // Враг считается мертвым для систем, но проигрывает спецсмерть
+    [SerializeField] private string currentDeathType = "None";  // Тип урона, вызвавший спецсмерть (для дебага)
+    
+    [Header("Special Death System")]
+    private DeathHandlerManager deathHandlerManager;
+    
+    [Header("Blood Trail Settings")]
+    [SerializeField] private float bloodTrailInterval = 1.0f;  // Интервал между декалями крови (в секундах)
+    private float lastBloodTrailTime = 0f;  // Время последней декали крови
+    // ПРИМЕЧАНИЕ: Все декали отключены во время isHandlingDeath=true для чистой спецсмерти
+    
+    [Header("Special Death Final Speed")]
+    private float finalMoveSpeed = 0f;  // Финальная скорость движения при специальной смерти
+    private bool hadSpecialDeath = false;  // Флаг: была ли специальная смерть
+    
+    [Header("Special Death Attachments")]
+    [Tooltip("Список эффектов которые можно спавнить на ригидбоди при специальной смерти")]
+    [SerializeField] private DeathAttachment[] handleDeathAttachments = new DeathAttachment[0];
+    
+    [Header("Attachment Spawn Settings")]
+    [Tooltip("Минимальное количество эффектов на каждый ригидбоди")]
+    [SerializeField] private int minAttachmentsPerRigidbody = 3;
+    
+    [Tooltip("Максимальное количество эффектов на каждый ригидбоди")]
+    [SerializeField] private int maxAttachmentsPerRigidbody = 5;
 
     [Header("Decal System")]
     public SimpleDecalContainer decalContainer;
@@ -154,8 +178,24 @@ public class EnemyHealth : MonoBehaviour
         Debug.Log($"Decal Container: {decalContainer != null}");
         Debug.Log($"Level Object Decal Container: {levelObjectDecalContainer != null}");
 
+        // Инициализируем систему специальных смертей
+        InitializeDeathHandlerSystem();
+
         // Запускаем корутину случайных стейтов (аналогично старому скрипту)
         StartCoroutine(RandomStateGenerator());
+    }
+    
+    /// <summary>
+    /// Инициализирует систему обработки специальных смертей
+    /// </summary>
+    private void InitializeDeathHandlerSystem()
+    {
+        // Добавляем DeathHandlerManager как компонент, если его еще нет
+        deathHandlerManager = GetComponent<DeathHandlerManager>();
+        if (deathHandlerManager == null)
+        {
+            deathHandlerManager = gameObject.AddComponent<DeathHandlerManager>();
+        }
     }
 
     /// <summary>
@@ -181,12 +221,17 @@ public class EnemyHealth : MonoBehaviour
             ActivateCriticalDamage();
         }
 
-        // Если здоровье ниже порога и приземлились далеко от последней декали, спавним новую
-        if (IsLowOnHealth() && Vector3.Distance(transform.position, lastDecalPosition) > decalSpawnDistance)
+        // Если здоровье ниже порога И враг не мертв И прошло достаточно времени, спавним декаль
+        if (IsLowOnHealth() && !isDead && !isHandlingDeath && 
+            Vector3.Distance(transform.position, lastDecalPosition) > decalSpawnDistance &&
+            Time.time >= lastBloodTrailTime + bloodTrailInterval)
         {
             CreateBloodDecalOnGround();
             lastDecalPosition = transform.position;
+            lastBloodTrailTime = Time.time;
         }
+        
+        // Декали агонии отключены - никаких декалей во время isHandlingDeath
     }
 
     // Перегрузки TakeDamage остаются без изменений (как в новом скрипте)
@@ -214,6 +259,7 @@ public class EnemyHealth : MonoBehaviour
                            Vector3 hitDirection,
                            DamageType damageType)
     {
+        // Мертвые враги не получают урон (но isHandlingDeath могут для статус-эффектов)
         if (isDead)
             return;
 
@@ -228,10 +274,13 @@ public class EnemyHealth : MonoBehaviour
             return;
         }
 
-        // Обычный урон: создаём декали
-        CreateDecalOnGround();
-        Debug.Log($"Level Object Decal Container in TakeDamage: {levelObjectDecalContainer != null}");
-        CreateDecalOnLevelObject(hitPoint, hitDirection);
+        // Обычный урон: создаём декали (только если не в процессе специальной смерти)
+        if (!isHandlingDeath)
+        {
+            CreateDecalOnGround();
+            Debug.Log($"Level Object Decal Container in TakeDamage: {levelObjectDecalContainer != null}");
+            CreateDecalOnLevelObject(hitPoint, hitDirection);
+        }
 
         // Вычитаем HP, обновляем и вызываем события
         health -= damage;
@@ -244,30 +293,28 @@ public class EnemyHealth : MonoBehaviour
         // Проверяем смерть
         if (health <= 0f)
         {
-            // Устанавливаем флаг смерти от огня
-            if (damageType == DamageType.Fire)
-                diedByFire = true;
-
-            if (UnityEngine.Random.value > 0.5f) DieAlternative();
-            else Die();
+            HandleDeath(damageType, hitPoint, hitDirection);
         }
 
-        // Накопление урона и критические эффекты
-        damageCounter += damage;
-        if (damageCounter >= damageThreshold)
+        // Накопление урона и критические эффекты (только для живых врагов)
+        if (!isDead && !isHandlingDeath)
         {
-            if (UnityEngine.Random.Range(1, 101) <= criticalDamageChance)
-                ActivateCriticalDamage();
-            else if (!isDamage)
-                HandleHighDamage();
-            damageCounter = 0f;
+            damageCounter += damage;
+            if (damageCounter >= damageThreshold)
+            {
+                if (UnityEngine.Random.Range(1, 101) <= criticalDamageChance)
+                    ActivateCriticalDamage();
+                else if (!isDamage)
+                    HandleHighDamage();
+                damageCounter = 0f;
+            }
         }
     }
 
     private void HandleBlastDeath(Vector3 blastOrigin)
     {
         isDead = true;
-        OnDeath?.Invoke(this);
+        TriggerDeathEvent();
 
         // Отключаем все контроллеры и анимацию
         capsuleCollider.enabled = false;
@@ -363,7 +410,12 @@ public class EnemyHealth : MonoBehaviour
         enemyMovement.enabled = false;
         enemyPatrol.enabled = false;
         lookRegistrator.enabled = false;
-        navMeshAgent.enabled = false;
+        
+        // NavMeshAgent НЕ отключаем если враг в процессе специальной смерти
+        if (!isHandlingDeath)
+        {
+            navMeshAgent.enabled = false;
+        }
 
         // Устанавливаем флаг критического урона
         animator.SetBool("isCriticalDamage", true);
@@ -391,11 +443,222 @@ public class EnemyHealth : MonoBehaviour
         HealthPercentage = (health / initialHealth) * 100f;
         HealthPercentage = Mathf.Clamp(HealthPercentage, 0f, 100f);
     }
+    
+    /// <summary>
+    /// Обрабатывает смерть врага - выбирает специальную или обычную смерть
+    /// </summary>
+    /// <param name="damageType">Тип урона, который убил врага</param>
+    /// <param name="hitPoint">Точка попадания</param>
+    /// <param name="hitDirection">Направление удара</param>
+    private void HandleDeath(DamageType damageType, Vector3 hitPoint, Vector3 hitDirection)
+    {
+        // Если уже мертв или уже обрабатываем смерть, игнорируем
+        if (isDead || isHandlingDeath)
+            return;
+            
+        Debug.Log($"HandleDeath вызван для {name} с типом урона: {damageType}");
+        
+        // Устанавливаем тип смерти для дебага
+        SetDeathType(damageType);
+        
+        // Передаем обработку в DeathHandlerManager
+        if (deathHandlerManager != null)
+        {
+            deathHandlerManager.HandleEnemyDeath(this, damageType, hitPoint, hitDirection);
+        }
+        else
+        {
+            Debug.LogWarning($"DeathHandlerManager не найден для {name}, используем обычную смерть");
+            // Fallback - обычная смерть (сбрасываем финальную скорость)
+            ResetFinalMoveSpeed();
+            isDead = true;
+            TriggerDeathEvent();
+            
+            if (UnityEngine.Random.value > 0.5f) DieAlternative();
+            else Die();
+        }
+    }
+    
+    /// <summary>
+    /// Публичный метод для вызова события смерти (для DeathHandlerManager)
+    /// </summary>
+    public void TriggerDeathEvent()
+    {
+        OnDeath?.Invoke(this);
+    }
+    
+    /// <summary>
+    /// Устанавливает тип урона для дебага (отображается в инспекторе)
+    /// </summary>
+    public void SetDeathType(DamageType damageType)
+    {
+        currentDeathType = damageType.ToString();
+    }
+    
+    /// <summary>
+    /// Устанавливает финальную скорость движения при специальной смерти
+    /// </summary>
+    public void SetFinalMoveSpeed(float speed)
+    {
+        finalMoveSpeed = speed;
+        hadSpecialDeath = true;  // Помечаем что была специальная смерть
+        Debug.Log($"Установлена финальная скорость {speed:F1} для {name} (специальная смерть)");
+    }
+    
+    /// <summary>
+    /// Сбрасывает финальную скорость (для обычной смерти без спецэффектов)
+    /// </summary>
+    private void ResetFinalMoveSpeed()
+    {
+        finalMoveSpeed = 0f;
+        hadSpecialDeath = false;  // Сбрасываем флаг специальной смерти
+    }
+    
+    /// <summary>
+    /// Получает эффекты для специальной смерти по типу урона
+    /// </summary>
+    public DeathAttachment[] GetAttachmentsForDamageType(DamageType damageType)
+    {
+        var filtered = new System.Collections.Generic.List<DeathAttachment>();
+        
+        foreach (var attachment in handleDeathAttachments)
+        {
+            if (attachment != null && attachment.IsValid() && attachment.MatchesDamageType(damageType))
+            {
+                filtered.Add(attachment);
+            }
+        }
+        
+        return filtered.ToArray();
+    }
+    
+    /// <summary>
+    /// Спавнит эффекты специальной смерти на все ригидбоди врага постепенно
+    /// </summary>
+    public void SpawnDeathAttachments(DamageType damageType)
+    {
+        // Фильтруем эффекты по типу урона
+        var attachments = GetAttachmentsForDamageType(damageType);
+        if (attachments.Length == 0)
+        {
+            Debug.LogWarning($"Не найдены эффекты для типа урона {damageType} у {name}");
+            return;
+        }
+        
+        Debug.Log($"Спавним эффекты специальной смерти на {rigidbodies.Length} ригидбоди для {name}");
+        
+        // Запускаем постепенный спавн эффектов
+        StartCoroutine(SpawnAttachmentsGradually(attachments));
+    }
+    
+    /// <summary>
+    /// Корутина для постепенного спавна эффектов в течение 0.75 секунд
+    /// </summary>
+    private IEnumerator SpawnAttachmentsGradually(DeathAttachment[] attachments)
+    {
+        float spawnDuration = 0.75f;
+        float elapsedTime = 0f;
+        
+        // Собираем все возможные спавны заранее
+        var allSpawns = new System.Collections.Generic.List<System.Tuple<Rigidbody, DeathAttachment>>();
+        
+        foreach (var rigidbody in rigidbodies)
+        {
+            if (rigidbody == null) continue;
+            
+            // Проверяем есть ли Damageable компонент
+            var damageable = rigidbody.GetComponent<Damageable>();
+            if (damageable == null)
+            {
+                Debug.LogWarning($"Ригидбоди {rigidbody.name} не содержит Damageable компонент");
+                continue;
+            }
+            
+            // Определяем количество эффектов для спавна
+            int attachmentCount = UnityEngine.Random.Range(minAttachmentsPerRigidbody, maxAttachmentsPerRigidbody + 1);
+            
+            // Добавляем в список спавнов
+            for (int i = 0; i < attachmentCount; i++)
+            {
+                var randomAttachment = attachments[UnityEngine.Random.Range(0, attachments.Length)];
+                allSpawns.Add(new System.Tuple<Rigidbody, DeathAttachment>(rigidbody, randomAttachment));
+            }
+        }
+        
+        Debug.Log($"Всего запланировано {allSpawns.Count} эффектов для постепенного спавна");
+        
+        // Спавним эффекты постепенно
+        int totalSpawns = allSpawns.Count;
+        for (int i = 0; i < totalSpawns; i++)
+        {
+            var spawn = allSpawns[i];
+            SpawnSingleAttachment(spawn.Item2, spawn.Item1);
+            
+            // Ждем перед следующим спавном
+            float waitTime = spawnDuration / totalSpawns;
+            yield return new WaitForSeconds(waitTime);
+            elapsedTime += waitTime;
+        }
+        
+        Debug.Log($"Завершен постепенный спавн за {elapsedTime:F2} секунд");
+    }
+    
+    /// <summary>
+    /// Спавнит один эффект на ригидбоди с улучшенным позиционированием и контролем времени жизни
+    /// </summary>
+    private void SpawnSingleAttachment(DeathAttachment attachment, Rigidbody rigidbody)
+    {
+        if (attachment == null || !attachment.IsValid() || rigidbody == null)
+            return;
+            
+        // Спавним префаб
+        var spawnedEffect = Instantiate(attachment.attachmentPrefab, rigidbody.transform);
+        
+        // Улучшенное рандомное позиционирование по всему объему коллайдера
+        var collider = rigidbody.GetComponent<Collider>();
+        if (collider != null)
+        {
+            // Используем bounds коллайдера для более широкого распределения
+            Bounds bounds = collider.bounds;
+            Vector3 randomPosition = new Vector3(
+                UnityEngine.Random.Range(bounds.min.x, bounds.max.x),
+                UnityEngine.Random.Range(bounds.min.y, bounds.max.y),
+                UnityEngine.Random.Range(bounds.min.z, bounds.max.z)
+            );
+            
+            // Конвертируем в локальные координаты
+            spawnedEffect.transform.position = randomPosition;
+        }
+        
+        // Устанавливаем случайный поворот
+        spawnedEffect.transform.rotation = UnityEngine.Random.rotation;
+        
+        // Контролируем время жизни эффекта
+        float lifetime = attachment.GetRandomLifetime();
+        StartCoroutine(DestroyEffectAfterTime(spawnedEffect, lifetime));
+        
+        Debug.Log($"Заспавнен эффект {attachment.attachmentPrefab.name} на {rigidbody.name} (время жизни: {lifetime:F1}с) для {name}");
+    }
+    
+    /// <summary>
+    /// Корутина для уничтожения эффекта через заданное время
+    /// </summary>
+    private IEnumerator DestroyEffectAfterTime(GameObject effect, float lifetime)
+    {
+        if (effect == null) yield break;
+        
+        yield return new WaitForSeconds(lifetime);
+        
+        if (effect != null)
+        {
+            Debug.Log($"Уничтожаем эффект {effect.name} после {lifetime:F1}с жизни");
+            Destroy(effect);
+        }
+    }
 
-    private void Die()
+    public void Die()
     {
         isDead = true;
-        OnDeath?.Invoke(this);
 
         if (AreLevelObjectsNearby())
             transitionDuration = 1f;
@@ -408,7 +671,33 @@ public class EnemyHealth : MonoBehaviour
         alertRadius.enabled = false;
         rotateForSearching.enabled = false;
         lookRegistrator.enabled = false;
-        animator.SetBool("isDead", true);
+        
+        // Логика зависит от типа смерти
+        if (hadSpecialDeath)
+        {
+            // СПЕЦИАЛЬНАЯ СМЕРТЬ: используем finalMoveSpeed
+            if (finalMoveSpeed > 0f)
+            {
+                // Движение было - случайно выбираем RndState 5 или 9
+                int randomDeathState = UnityEngine.Random.value > 0.5f ? 5 : 9;
+                animator.SetInteger("RndState", randomDeathState);
+                animator.SetBool("isDead", true);
+                Debug.Log($"Специальная смерть в движении: RndState = {randomDeathState} для {name}");
+            }
+            else
+            {
+                // Специальная смерть без движения
+                animator.SetBool("isDead", true);
+                Debug.Log($"Специальная смерть без движения: обычный регдолл для {name}");
+            }
+        }
+        else
+        {
+            // ОБЫЧНАЯ СМЕРТЬ: всегда применяем импульс как раньше
+            animator.SetBool("isDead", true);
+            Debug.Log($"Обычная смерть: стандартный импульс регдолла для {name}");
+        }
+        
         navMeshAgent.enabled = false;
 
         StartCoroutine(TransitionToRagdoll());
@@ -419,13 +708,32 @@ public class EnemyHealth : MonoBehaviour
             rb.isKinematic = false;
         }
 
+        // Логика импульса для Die() зависит от типа смерти
+        if (hadSpecialDeath)
+        {
+            // Специальная смерть: применяем импульс только если скорость была > 0
+            if (finalMoveSpeed > 0f)
+            {
+                // Для Die() используется TransitionToRagdoll(), поэтому импульс будет применен там
+                Debug.Log($"Die(): Специальная смерть в движении, импульс через TransitionToRagdoll()");
+            }
+            else
+            {
+                Debug.Log($"Die(): Специальная смерть без движения, без импульса");
+            }
+        }
+        else
+        {
+            // Обычная смерть: для Die() импульс применяется через TransitionToRagdoll()
+            Debug.Log($"Die(): Обычная смерть, импульс через TransitionToRagdoll()");
+        }
+
         StartCoroutine(CreateBloodPuddle());
     }
 
-    private void DieAlternative()
+    public void DieAlternative()
     {
         isDead = true;
-        OnDeath?.Invoke(this);
 
         capsuleCollider.enabled = false;
         enemyShootingScript.enabled = false;
@@ -434,14 +742,56 @@ public class EnemyHealth : MonoBehaviour
         alertRadius.enabled = false;
         rotateForSearching.enabled = false;
         lookRegistrator.enabled = false;
+        
+        // Логика зависит от типа смерти
+        if (hadSpecialDeath)
+        {
+            // СПЕЦИАЛЬНАЯ СМЕРТЬ: используем finalMoveSpeed
+            if (finalMoveSpeed > 0f)
+            {
+                // Движение было - случайно выбираем RndState 5 или 9
+                int randomDeathState = UnityEngine.Random.value > 0.5f ? 5 : 9;
+                animator.SetInteger("RndState", randomDeathState);
+                animator.SetBool("isDead", true);
+                Debug.Log($"Альтернативная специальная смерть в движении: RndState = {randomDeathState} для {name}");
+            }
+            else
+            {
+                // Специальная смерть без движения
+                Debug.Log($"Альтернативная специальная смерть без движения: обычный регдолл для {name}");
+            }
+        }
+        else
+        {
+            // ОБЫЧНАЯ СМЕРТЬ: всегда применяем импульс как раньше
+            Debug.Log($"Альтернативная обычная смерть: стандартный импульс регдолла для {name}");
+        }
+        
+        // NavMeshAgent отключается только при финальной смерти (не при специальной)
         navMeshAgent.enabled = false;
         animator.enabled = false;
 
         foreach (Rigidbody rb in rigidbodies)
             rb.isKinematic = false;
 
-        ragdollImpulseForce = ForceRagdoll;
-        ApplyImpulse();
+        // Логика импульса зависит от типа смерти
+        if (hadSpecialDeath)
+        {
+            // Специальная смерть: применяем импульс только если скорость была > 0
+            if (finalMoveSpeed > 0f)
+            {
+                ragdollImpulseForce = ForceRagdoll;
+                ApplyImpulse();
+                Debug.Log($"Применен импульс для специальной смерти в движении: {finalMoveSpeed:F1}");
+            }
+        }
+        else
+        {
+            // Обычная смерть: всегда применяем импульс (как было раньше)
+            ragdollImpulseForce = ForceRagdoll;
+            ApplyImpulse();
+            Debug.Log($"Применен стандартный импульс для обычной смерти");
+        }
 
         StartCoroutine(CreateBloodPuddle());
     }
@@ -466,6 +816,9 @@ public class EnemyHealth : MonoBehaviour
 
     private void CreateBloodDecalOnGround()
     {
+        // Запрещаем декали во время специальной смерти
+        if (isHandlingDeath) return;
+        
         if (decalContainer == null) return;
 
         RaycastHit hit;
@@ -495,6 +848,9 @@ public class EnemyHealth : MonoBehaviour
 
     private void CreateDecalOnGround()
     {
+        // Запрещаем декали во время специальной смерти
+        if (isHandlingDeath) return;
+        
         if (decalContainer == null) return;
 
         RaycastHit hit;
@@ -527,6 +883,9 @@ public class EnemyHealth : MonoBehaviour
 
     private void CreateDecalOnLevelObject(Vector3 hitPoint, Vector3 hitDirection)
     {
+        // Запрещаем декали во время специальной смерти
+        if (isHandlingDeath) return;
+        
         if (levelObjectDecalContainer == null)
         {
             Debug.Log("levelObjectDecalContainer is not assigned");
@@ -580,6 +939,9 @@ public class EnemyHealth : MonoBehaviour
     private IEnumerator CreateBloodPuddle()
     {
         yield return new WaitForSeconds(2f); // Ждем 2 секунды
+
+        // Запрещаем лужи крови во время специальной смерти
+        if (isHandlingDeath) yield break;
 
         if (bloodPuddleDecalContainer == null || bloodPuddleParentObject == null)
             yield break;
@@ -669,6 +1031,27 @@ public class EnemyHealth : MonoBehaviour
             animator.enabled = false;
             foreach (var rb in rigidbodies)
                 rb.isKinematic = false;
+            
+            // Для обычной смерти всегда применяем импульс даже без столкновения
+            if (!hadSpecialDeath)
+            {
+                // Применяем стандартный импульс для обычной смерти
+                ApplyImpulse();
+                Debug.Log($"TransitionToRagdoll: Применен стандартный импульс для обычной смерти");
+            }
+            else
+            {
+                // Для специальной смерти применяем импульс только если была скорость
+                if (finalMoveSpeed > 0f)
+                {
+                    ApplyImpulse();
+                    Debug.Log($"TransitionToRagdoll: Применен импульс для специальной смерти в движении: {finalMoveSpeed:F1}");
+                }
+                else
+                {
+                    Debug.Log($"TransitionToRagdoll: Специальная смерть без движения, импульс не применен");
+                }
+            }
         }
     }
 
@@ -711,6 +1094,61 @@ public class EnemyHealth : MonoBehaviour
             }
             yield return new WaitForSeconds(0.5f);
         }
+    }
+
+    /// <summary>
+    /// Применяет специальные текстуры смерти на все Damageable компоненты
+    /// </summary>
+    public void ApplySpecialDeathTextures(DamageType damageType)
+    {
+        if (rigidbodies == null || rigidbodies.Length == 0)
+        {
+            Debug.LogWarning($"Нет ригидбоди для применения специальных текстур у {name}");
+            return;
+        }
+        
+        int appliedCount = 0;
+        foreach (var rigidbody in rigidbodies)
+        {
+            if (rigidbody == null) continue;
+            
+            // Получаем Damageable компонент
+            var damageable = rigidbody.GetComponent<Damageable>();
+            if (damageable != null)
+            {
+                damageable.ApplySpecialDeathTexture(damageType);
+                appliedCount++;
+            }
+        }
+        
+        Debug.Log($"Применены специальные текстуры типа {damageType} на {appliedCount} Damageable компонентов у {name}");
+    }
+    
+    /// <summary>
+    /// Сбрасывает специальные текстуры обратно к начальным на всех Damageable (МЕТОД НЕ ИСПОЛЬЗУЕТСЯ - ТЕКСТУРЫ ОСТАЮТСЯ НАВСЕГДА)
+    /// </summary>
+    public void ResetSpecialDeathTextures()
+    {
+        Debug.LogWarning($"ResetSpecialDeathTextures вызван для {name}, но текстуры специальной смерти должны оставаться НАВСЕГДА!");
+        
+        // ЗАКОММЕНТИРОВАНО: текстуры остаются навсегда
+        /*
+        if (rigidbodies == null || rigidbodies.Length == 0)
+            return;
+            
+        foreach (var rigidbody in rigidbodies)
+        {
+            if (rigidbody == null) continue;
+            
+            var damageable = rigidbody.GetComponent<Damageable>();
+            if (damageable != null)
+            {
+                damageable.ResetToInitialTextures();
+            }
+        }
+        
+        Debug.Log($"Сброшены специальные текстуры к начальным у {name}");
+        */
     }
 
     private bool AreLevelObjectsNearby()

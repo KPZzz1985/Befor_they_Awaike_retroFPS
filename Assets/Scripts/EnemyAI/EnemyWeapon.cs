@@ -128,9 +128,11 @@ public class EnemyWeapon : MonoBehaviour
     {
         if (enemyHealth != null)
         {
-            isDead = enemyHealth.isDead;
-            // Prevent any actions during critical damage
-            if (enemyHealth.isCriticalDamage)
+            // Враг считается мертвым если isDead=true ИЛИ isHandlingDeath=true
+            isDead = enemyHealth.isDead || enemyHealth.isHandlingDeath;
+            
+            // Prevent any actions during critical damage OR special death
+            if (enemyHealth.isCriticalDamage || enemyHealth.isHandlingDeath)
             {
                 isShooting = false;
                 return;

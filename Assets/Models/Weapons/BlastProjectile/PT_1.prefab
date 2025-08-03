@@ -109,6 +109,8 @@ MonoBehaviour:
   explosionVolume: 1
   explosionMinDistance: 1
   explosionMaxDistance: 15
+  flightClip: {fileID: 0}
+  flightVolume: 1
 --- !u!1 &2418520891874665196
 GameObject:
   m_ObjectHideFlags: 0

@@ -74,7 +74,7 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _JitterAmount: 1.1
+    - _JitterAmount: 1
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
@@ -83,8 +83,8 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TextureFPS: 1.5
-    - _TextureJitterAmplitude: 0.0025
+    - _TextureFPS: 0.01
+    - _TextureJitterAmplitude: 0.0005
     - _Tiling: 1
     - _UVSec: 0
     - _VertexJitterFrequency: 0.1

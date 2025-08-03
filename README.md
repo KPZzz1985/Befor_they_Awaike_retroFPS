@@ -68,6 +68,38 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
     - `BlastProjectile` now plays looped `flightClip` via a second `AudioSource` during flight, stopping it on explosion before playing `explosionClip`.
     - Configurable `flightVolume`, `flightClip`, and spatial settings align with explosion audio.
 
+15. **Special Death System** ✨**NEW**
+    - Implemented a comprehensive special death system allowing diverse and dramatic enemy death sequences based on damage type.
+    - **Core Architecture**:
+      - `isHandlingDeath` flag: temporary buffer between damage and final death, allowing special death sequences
+      - `IDeathHandler` interface: defines contract for different special death types
+      - `DeathHandlerManager`: central component that selects and executes appropriate death handlers
+      - `DamageType` enum: categorizes damage (Generic, Blast, Fire, Acid, Electric, DarkFire, Vampire, RliehGliphs)
+    
+    - **Fire Death Implementation** (first special death type):
+      - **Duration**: Random 4-6 seconds of `isHandlingDeath` state
+      - **Animation Logic**: Sets `isBurning=true` in animator, alternates between pause (`Speed=0` for 1-1.5s) and movement (`Speed=5-6` to random NavMesh points)
+      - **Final Transition**: Uses final movement speed to determine death animation (`RndState=5/9` if moving, standard ragdoll if stationary)
+      - **Visual Effects**: Spawns 3-5 random fire effect prefabs on each rigidbody with `Damageable` script during special death
+      - **Ground Fire Trails**: When enemy runs (speed > 1), spawns fire effects on ground using raycast positioning
+      - **Permanent Texture Changes**: Applies "burned" textures to all `Damageable` components that remain after death
+    
+    - **Smart Impulse Logic**:
+      - **Generic Death** (normal weapons): Always applies ragdoll impulse as before
+      - **Special Death**: Only applies impulse if enemy was moving at transition moment
+      - Uses `hadSpecialDeath` flag to distinguish between death types
+    
+    - **System Integration**:
+      - `StrategicSystem` ignores enemies with `isHandlingDeath=true` (no forced patterns/abilities)
+      - `EnemyWeapon` disabled during special death to prevent shooting
+      - Decal system disabled during `isHandlingDeath` to prevent blood spam
+      - NavMeshAgent remains active for special death movement, disabled only at final death
+    
+    - **Configuration** (per enemy via Inspector):
+      - `handleDeathAttachments[]`: Maps prefabs to damage types with configurable lifetimes
+      - `specialDeathTextures[]`: Maps textures to damage types for permanent visual changes
+      - `minAttachmentsPerRigidbody` / `maxAttachmentsPerRigidbody`: Controls effect density
+
 ## Unity Package & Dependencies
 
 - **UniTask**: asynchronous toolset installed via OpenUPM registry (package `com.cysharp.unitask`).
@@ -97,21 +129,67 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
 3. **CoverFormation**
    - Place `CoverFormation` in the scene, assign the player `Transform` and `PlayerTargetSystem` reference.
 
-4. **Testing & Playmode**
+4. **Special Death System Setup**
+   - **EnemyHealth Configuration**:
+     - Add `DeathAttachment[]` entries mapping prefab + damage type + lifetime (min/max seconds)
+     - Add `DamageTypeTexture[]` entries mapping texture + damage type for permanent visual changes
+     - Configure `minAttachmentsPerRigidbody` and `maxAttachmentsPerRigidbody` (recommended: 3-5)
+   
+   - **Damageable Configuration**:
+     - Ensure all enemy parts have `Damageable` script for texture application
+     - Configure `specialDeathTextures[]` array with texture mappings per damage type
+   
+   - **FireDeathHandler Settings** (configured automatically via code):
+     - Burn duration: 4-6 seconds random
+     - Movement pattern: pause (1-1.5s) → move to random point (speed 5-6) → repeat
+     - Ground trail spawn: every 0.15s when speed > 1, min distance 0.5m between trails
+   
+   - **Effect Prefabs**:
+     - Fire effects should have `FireEffectZone` script or similar with lifetime management
+     - Ground fire effects spawn using same raycast logic as decal system (Ground tag required)
+
+5. **Testing & Playmode**
    - Run the scene; watch on-screen debug for Mana and throw events.
    - Verify that L1Soldier units alternate grenade throws, stop movement/shooting for the throw animation, then resume.
 
-5. **PSOneShaderGI Parameter Auto-Apply**
+6. **PSOneShaderGI Parameter Auto-Apply**
    - Use the **Tools → Set PSOneShaderGI Params for Materials** window to adjust shader parameters (_Tiling, _PixelationAmount, _ColorPrecision, _JitterAmount, _TextureFPS, _TextureJitterAmplitude).
    - Settings are saved in `EditorPrefs` and now automatically applied to all materials when entering Play Mode, so manual application is no longer required.
 
 ## Next Steps
 
+- **Special Death Expansion**:
+  - Implement additional death handlers: `AcidDeathHandler`, `ElectricDeathHandler`, `VampireDeathHandler`
+  - Add corresponding visual effects and textures for each damage type
+  - Create weapon-specific death sequences (e.g., electric weapons cause twitching/sparking)
 - Implement **drone ability** similar to grenade but with flight and delayed explosion.
 - Add more **behavior patterns** for other enemy types.
 - Polish AI transitions: between ambush, cover, chase, and retreat.
 - Integrate weapon animations and visual effects for abilities.
 - Ensure movement animations update during all AI states by calling `UpdateAnimatorMovement()` early in `LateUpdate()`, so retreat/ambush/push states no longer block animation updates.
 
+## Recent Changes Log
+
+### Version: Special Death System Implementation
+**Date**: January 2025
+**Major Features Added**:
+- Complete special death system architecture with `isHandlingDeath` buffer state
+- Fire death handler with burning animations, movement patterns, and visual effects
+- Smart ragdoll impulse logic distinguishing normal vs special deaths  
+- Permanent texture application system for visual damage persistence
+- Ground fire trail spawning system with proper positioning
+- Gradual effect spawning over time (0.75s) with configurable attachment density
+- Integration with existing systems (StrategicSystem, Decal System, NavMesh)
+
+**Files Modified**:
+- `Assets/Scripts/EnemyAI/EnemyHealth.cs` - Core death management and effect spawning
+- `Assets/Scripts/EnemyAI/StrategicSystem.cs` - Updated to ignore special death enemies  
+- `Assets/Scripts/EnemyAI/Damageable.cs` - Added texture mapping and application
+- **New Files Created**:
+  - `Assets/Scripts/EnemyAI/IDeathHandler.cs` - Death handler interface
+  - `Assets/Scripts/EnemyAI/DeathHandlerManager.cs` - Death system coordinator
+  - `Assets/Scripts/EnemyAI/FireDeathHandler.cs` - Fire-specific death implementation
+  - `Assets/Scripts/EnemyAI/DeathAttachment.cs` - Attachment data structure
+
 ---
-*Generated by strategic AI assistant on your codebase.*
+*Updated with Special Death System implementation by AI assistant.*

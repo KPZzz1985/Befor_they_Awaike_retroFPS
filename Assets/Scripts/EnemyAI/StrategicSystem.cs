@@ -214,12 +214,17 @@ public class StrategicSystem : MonoBehaviour
             EnemyMovement2 enemyMovement = enemyStatus.enemyObject.GetComponent<EnemyMovement2>();
 
             // 🔥 Обновляем информацию о враге
-            enemyStatus.isDead = enemyHealth != null && enemyHealth.isDead;
+            // Враг считается мертвым если isDead=true ИЛИ isHandlingDeath=true
+            enemyStatus.isDead = enemyHealth != null && (enemyHealth.isDead || enemyHealth.isHandlingDeath);
             enemyStatus.weaponName = enemyChecker != null ? enemyChecker.GetEnemyWeaponName(enemyStatus.enemyObject) : "Unknown";
             enemyStatus.isPatrol = enemyPatrol != null && enemyPatrol.enabled;
             enemyStatus.isPlayerSeen = enemyStatus.PlayerSeen;
 
-            // ✅ Теперь StrategicSystem управляет стрельбой
+            // ⛔ Если враг мертв или обрабатывает смерть, не управляем им
+            if (enemyStatus.isDead)
+                continue;
+
+            // ✅ Теперь StrategicSystem управляет стрельбой (только для живых врагов)
             enemyStatus.isShooting = enemyStatus.isPlayerSeen;
 
             // ✅ Если тревога включена, отключаем патруль и включаем штурм
@@ -246,6 +251,9 @@ public class StrategicSystem : MonoBehaviour
         foreach (EnemyStatus enemyStatus in enemyStatuses)
         {
             if (enemyStatus.enemyObject == null) continue;
+            
+            // ⛔ Мертвые враги не могут поднимать тревогу
+            if (enemyStatus.isDead) continue;
 
             if (enemyStatus.PlayerSeen)
             {
@@ -266,7 +274,8 @@ public class StrategicSystem : MonoBehaviour
         {
             foreach (EnemyStatus otherEnemyStatus in enemyStatuses)
             {
-                if (otherEnemyStatus.enemyObject != null && !otherEnemyStatus.PlayerSeen)
+                // ⛔ Мертвые враги не могут получать тревогу
+                if (otherEnemyStatus.enemyObject != null && !otherEnemyStatus.PlayerSeen && !otherEnemyStatus.isDead)
                 {
                     float distance = Vector3.Distance(sourceEnemyStatus.enemyObject.transform.position, otherEnemyStatus.enemyObject.transform.position);
                     if (distance <= alertRadius.alertRadius)
@@ -319,6 +328,9 @@ public class StrategicSystem : MonoBehaviour
         foreach (EnemyStatus enemyStatus in enemyStatuses)
         {
             if (enemyStatus.enemyObject == null) continue;
+            
+            // ⛔ Мертвые враги не нуждаются в активации/деактивации
+            if (enemyStatus.isDead) continue;
 
             float distance = Vector3.Distance(playerTransform.position, enemyStatus.enemyObject.transform.position);
             if (distance <= enemyStatus.activationRadius)
@@ -335,6 +347,9 @@ public class StrategicSystem : MonoBehaviour
     private void ActivateEnemy(EnemyStatus enemyStatus, bool activate)
     {
         if (enemyStatus.enemyObject == null) return;
+        
+        // ⛔ Мертвые враги не активируются/деактивируются
+        if (enemyStatus.isDead) return;
 
         MonoBehaviour[] components = enemyStatus.enemyObject.GetComponentsInChildren<MonoBehaviour>();
         foreach (MonoBehaviour component in components)
@@ -450,7 +465,7 @@ public class StrategicSystem : MonoBehaviour
         if (pool.Count == 0) pool = eligible;
         var chosen = pool[Random.Range(0, pool.Count)];
         Debug.Log($"[Debug] Chosen grenade thrower: {chosen.enemyObject.name}");
-        if (Random.value <= grenadeThrowChance)
+                    if (UnityEngine.Random.value <= grenadeThrowChance)
         {
             currentMana = Mathf.Max(0f, currentMana - grenadeManaCost);
             ThrowAbility(chosen, CancellationToken.None).Forget();
@@ -489,7 +504,7 @@ public class StrategicSystem : MonoBehaviour
         if (eligible.Count == 0) return;
         var chosen = eligible[Random.Range(0, eligible.Count)];
         Debug.Log($"[Debug] Chosen burst fire soldier: {chosen.enemyObject.name}");
-        if (Random.value <= burstFireChance)
+                    if (UnityEngine.Random.value <= burstFireChance)
         {
             currentMana = Mathf.Max(0f, currentMana - burstFireManaCost);
             BurstFireAbility(chosen).Forget();

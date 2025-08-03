@@ -200,6 +200,28 @@ MonoBehaviour:
   maxNumber: 27
   StateGenerator: 0
   isDead: 0
+  isHandlingDeath: 0
+  currentDeathType: None
+  bloodTrailInterval: 0.05
+  handleDeathAttachments:
+  - attachmentPrefab: {fileID: 382460624685181807, guid: d61bd593adf90384e8de0740db14817b, type: 3}
+    damageType: 2
+    minLifetime: 4
+    maxLifetime: 10
+  - attachmentPrefab: {fileID: 382460624685181807, guid: 40633633ce26b8546aaad0f99f4198ff, type: 3}
+    damageType: 2
+    minLifetime: 4
+    maxLifetime: 10
+  - attachmentPrefab: {fileID: 382460624685181807, guid: e53724af7970e234c947846857cdc926, type: 3}
+    damageType: 2
+    minLifetime: 6
+    maxLifetime: 12
+  - attachmentPrefab: {fileID: 1000012560919920, guid: 7abbec0273fee0a409e57eb725e377af, type: 3}
+    damageType: 2
+    minLifetime: 8
+    maxLifetime: 14
+  minAttachmentsPerRigidbody: 5
+  maxAttachmentsPerRigidbody: 7
   decalContainer: {fileID: 0}
   levelObjectDecalContainer: {fileID: 0}
   bloodPuddleDecalContainer: {fileID: 0}
@@ -207,7 +229,7 @@ MonoBehaviour:
   minPuddleGrowthRate: 0.025
   maxPuddleGrowthRate: 0.1
   bloodPuddleMinScale: 1.5
-  bloodPuddleMaxScale: 2.5
+  bloodPuddleMaxScale: 3.5
   minHealth: 100
   maxHealth: 200
   HealthPercentage: 0
@@ -226,14 +248,14 @@ MonoBehaviour:
   ragdollObject: {fileID: 180450368125661044}
   skinnedMeshRenderers: []
   transitionDuration: 1.25
-  checkSphereRadius: 1
+  checkSphereRadius: 0.5
   rigidbodies:
   - {fileID: 1026960862721513425}
   - {fileID: 1026960863565070521}
   - {fileID: 1026960863492165671}
   - {fileID: 1026960863044810375}
   currentAnimation: 
-  ragdollImpulseForce: 0.25
+  ragdollImpulseForce: 0.5
   impulseAdjustment: {x: 0, y: 1, z: 0}
   torqueForce: 15
   ForceRagdoll: 350
@@ -1056,6 +1078,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &325757869
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1224,7 +1250,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1177491628991395714}
-  m_LocalRotation: {x: 0.012043769, y: 0.0029048058, z: -0.10444839, w: 0.99445313}
+  m_LocalRotation: {x: 0.0120437695, y: 0.0029048058, z: -0.1044484, w: 0.99445313}
   m_LocalPosition: {x: 0.042877138, y: 0.0000013113022, z: -0.00000059604645}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1599,6 +1625,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!136 &899977106
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -2333,6 +2363,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &1288597719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2509,6 +2543,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &655468573
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2779,6 +2817,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &427173665
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3218,6 +3260,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!136 &3972284305809199116
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -3276,7 +3322,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5939615277489805286}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.07, z: 0.225}
+  m_LocalPosition: {x: -0.297, y: 1.874, z: 0.324}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3507,6 +3553,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &1697832533
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3957,6 +4007,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &581601582
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4133,6 +4187,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &1358482099
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4544,6 +4602,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &8922648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5168,6 +5230,10 @@ MonoBehaviour:
   - {fileID: 2800000, guid: c7cd2b4060b30a04ca5f7b737ae5a375, type: 3}
   - {fileID: 2800000, guid: 9022c2f281b3b734db3f7f16be902e9e, type: 3}
   - {fileID: 2800000, guid: 638ca9773eb54424f9d7aa0968220bba, type: 3}
+  specialDeathTextures:
+  - specialDeathTexture: {fileID: 2800000, guid: 5cb42e72fd7657841acbd95bf09dcf86, type: 3}
+    damageType: 2
+  currentSpecialDeathType: None
 --- !u!114 &1121105986
 MonoBehaviour:
   m_ObjectHideFlags: 0

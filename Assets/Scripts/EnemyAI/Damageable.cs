@@ -3,6 +3,36 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// Маппинг текстуры на тип урона для специальной смерти
+/// </summary>
+[System.Serializable]
+public class DamageTypeTexture
+{
+    [Header("Special Death Texture Mapping")]
+    [Tooltip("Текстура для применения при специальной смерти")]
+    public Texture specialDeathTexture;
+    
+    [Tooltip("Тип урона для которого применяется эта текстура")]
+    public DamageType damageType;
+    
+    /// <summary>
+    /// Проверяет, подходит ли эта текстура для данного типа урона
+    /// </summary>
+    public bool MatchesDamageType(DamageType targetType)
+    {
+        return damageType == targetType;
+    }
+    
+    /// <summary>
+    /// Проверяет, валидна ли настройка
+    /// </summary>
+    public bool IsValid()
+    {
+        return specialDeathTexture != null;
+    }
+}
+
+/// <summary>
 /// Damageable handles per-part damage logic, dismemberment, decal spawning, and relays damage to EnemyHealth.
 /// Now supports two types of damage: Generic and Blast. If Blast damage is received, it forwards the type to EnemyHealth.
 /// </summary>
@@ -40,6 +70,14 @@ public class Damageable : MonoBehaviour
     public Texture[] WoundTextures;            // Array of textures to cycle through on damage
     private int meshToChangeIndex = 0;         // Index of mesh to change next
     private int[] textureIndices;              // Indices of current texture for each mesh
+    
+    [Header("Special Death Texture Settings")]
+    [Tooltip("Маппинг текстур для разных типов специальной смерти")]
+    [SerializeField] private DamageTypeTexture[] specialDeathTextures = new DamageTypeTexture[0];
+    
+    [Header("Debug Info")]
+    [Tooltip("Текущий тип специальной смерти (только для отображения)")]
+    [SerializeField] private string currentSpecialDeathType = "None";
 
     private bool spawnAllowed = true;          // To prevent multiple attached object spawns
     private bool hasDismemberedObjectSpawned = false;
@@ -183,6 +221,55 @@ public class Damageable : MonoBehaviour
         }
 
         meshToChangeIndex = (meshToChangeIndex + 1) % WoundMeshes.Length;
+    }
+    
+    /// <summary>
+    /// Применяет специальную текстуру смерти для данного типа урона
+    /// </summary>
+    public void ApplySpecialDeathTexture(DamageType damageType)
+    {
+        // Ищем подходящую текстуру для типа урона
+        DamageTypeTexture matchingTexture = null;
+        foreach (var textureMapping in specialDeathTextures)
+        {
+            if (textureMapping != null && textureMapping.IsValid() && textureMapping.MatchesDamageType(damageType))
+            {
+                matchingTexture = textureMapping;
+                break;
+            }
+        }
+        
+        if (matchingTexture == null)
+        {
+            Debug.LogWarning($"Не найдена специальная текстура для типа урона {damageType} на {name}");
+            return;
+        }
+        
+        // Применяем текстуру ко всем мешам
+        int appliedCount = 0;
+        for (int i = 0; i < WoundMeshes.Length; i++)
+        {
+            if (WoundMeshes[i] != null && WoundMeshes[i].materials != null && WoundMeshes[i].materials.Length > 0)
+            {
+                WoundMeshes[i].materials[0].SetTexture("_MainTex", matchingTexture.specialDeathTexture);
+                appliedCount++;
+            }
+        }
+        
+        // Обновляем дебаг информацию
+        currentSpecialDeathType = damageType.ToString();
+        
+        Debug.Log($"Применена НАВСЕГДА специальная текстура {matchingTexture.specialDeathTexture.name} для типа {damageType} на {appliedCount} мешей компонента {name}");
+    }
+    
+    /// <summary>
+    /// Сбрасывает специальную текстуру обратно к начальной (МЕТОД ОСТАВЛЕН ДЛЯ СОВМЕСТИМОСТИ, НО НЕ ИСПОЛЬЗУЕТСЯ)
+    /// </summary>
+    public void ResetToInitialTextures()
+    {
+        SetInitialTextures();
+        currentSpecialDeathType = "None";
+        Debug.Log($"Сброшены текстуры к начальным на {name} (НО ЭТОГО НЕ ДОЛЖНО ПРОИСХОДИТЬ - ТЕКСТУРЫ ДОЛЖНЫ ОСТАТЬСЯ НАВСЕГДА)");
     }
 
     private void Update()

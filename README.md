@@ -192,4 +192,18 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
   - `Assets/Scripts/EnemyAI/DeathAttachment.cs` - Attachment data structure
 
 ---
-*Updated with Special Death System implementation by AI assistant.*
+
+### Version: HUD, Fog & Inventory Enhancements
+**Date**: August 2025
+**Highlights**:
+- **Fog & UI Redesign**: убран динамический Fog в `PlayerHealth` и заменён на UI плашки (`damageOverlay`, `deathOverlay`) в `HUDController` с плавным появлением через UniTask.
+- **HUDController Updates**: добавлены поля `damageOverlay` и `deathOverlay`, методы `ShowDamageFlash()` и `ShowDeathOverlay()`, `InitializeOverlays()` растягивает плашки на весь экран и выводит поверх всех UI.
+- **PlayerHealth Refactor**: убраны операции SetColor и корутины Fog; вместо них вызовы `TriggerDamageUIEffect()` и `TriggerDeathUIEffect()`.
+- **SimpleFogEffect**: повторно включён на старте для работы с декалями, снимает ограничения Deferred.
+- **PickableItem Simplification**: логика подбора патронов перенесена на использование `WeaponSwitcher.CurrentWeaponIndex`, убраны сложные проверки и ручные поля.
+- **PlayerInventory Overhaul**: AmmoEntry теперь полностью генерируется из списка `WeaponSwitcher.weapons` в `Awake()`, добавлен метод `AddReserveReturn()` для атомарного обновления и получения нового значения.
+- **PM_Shooting Fix**: перенёс вычисление `weaponIndex` в `Awake()` для корректной работы даже при неактивном оружии.
+- **WeaponSwitcher Exposure**: новое свойство `CurrentWeaponIndex` публично возвращает индекс активного оружия для подбора.
+
+*Updated by AI assistant to reflect HUD, Fog & Inventory system improvements.*
+---

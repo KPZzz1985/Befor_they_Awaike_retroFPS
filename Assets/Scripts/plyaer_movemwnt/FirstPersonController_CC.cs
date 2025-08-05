@@ -6,7 +6,7 @@ public class FirstPersonController_CC : MonoBehaviour
 {
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
-    public float crouchSpeed = 2f; // Скорость при приседании
+    public float crouchSpeed = 2f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     public float jumpForce = 5f;
     public float gravity = -9.81f;
     public float dashDistance = 5f;
@@ -18,7 +18,7 @@ public class FirstPersonController_CC : MonoBehaviour
     public Transform cameraRotator;
     public float crouchHeight = 0.5f;
     public float crouchSmoothness = 0.1f;
-    public float colliderHeight = 1f; // Высота коллайдера при приседании
+    public float colliderHeight = 1f; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     public float dashEndTime;
 
     [Header("Ground Check Settings")]
@@ -38,8 +38,8 @@ public class FirstPersonController_CC : MonoBehaviour
     private float lastDashTime;
     public float dashSmoothness = 0.1f;
     private Vector3 dashVelocity;
-    private float originalCameraHeight; // Исходная высота камеры
-    private float originalColliderHeight; // Исходная высота коллайдера
+    private float originalCameraHeight; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    private float originalColliderHeight; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
   
 
@@ -108,10 +108,10 @@ public class FirstPersonController_CC : MonoBehaviour
         characterController.height = Mathf.Lerp(characterController.height, originalColliderHeight, crouchSmoothness);
     }
 
-    // Найти все объекты с тегом playerWeapon
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ playerWeapon
     GameObject[] playerWeapons = GameObject.FindGameObjectsWithTag("playerWeapon");
 
-    // Отправить флаг isCrouch в аниматор каждого объекта
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ isCrouch пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     foreach (GameObject playerWeapon in playerWeapons)
     {
         Animator animator = playerWeapon.GetComponent<Animator>();
@@ -132,11 +132,11 @@ public class FirstPersonController_CC : MonoBehaviour
     moveDirection.y = 0;
     moveDirection.Normalize();
 
-    float currentSpeed = isCrouching ? crouchSpeed : moveSpeed; // Скорость изменяется в зависимости от приседания
+    float currentSpeed = isCrouching ? crouchSpeed : moveSpeed; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    Vector3 preMovePosition = characterController.transform.position; // Запоминаем позицию до движения
+    Vector3 preMovePosition = characterController.transform.position; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     characterController.Move(moveDirection * currentSpeed * Time.deltaTime);
-    Vector3 postMovePosition = characterController.transform.position; // Запоминаем позицию после движения
+    Vector3 postMovePosition = characterController.transform.position; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     if (isGrounded && velocity.y < 0)
     {
@@ -163,16 +163,16 @@ public class FirstPersonController_CC : MonoBehaviour
         characterController.Move(velocity * Time.deltaTime);
     }
 
-    // Найти все объекты с тегом playerWeapon
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ playerWeapon
     GameObject[] playerWeapons = GameObject.FindGameObjectsWithTag("playerWeapon");
 
-    // Отправить параметр движения в аниматор каждого объекта
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     foreach (GameObject playerWeapon in playerWeapons)
     {
         Animator animator = playerWeapon.GetComponent<Animator>();
         if (animator != null)
         {
-            // Вычисляем скорость на основе изменения позиции и времени
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             float moveSpeed = (postMovePosition - preMovePosition).magnitude / Time.deltaTime;
             animator.SetFloat("Movement", moveSpeed);
         }
@@ -196,6 +196,8 @@ public class FirstPersonController_CC : MonoBehaviour
 
         isDashing = true;
         lastDashTime = Time.time;
+        var voice = GetComponent<VoiceSystem>();
+        if (voice != null) voice.TriggerEvent(VoiceEventType.Dashing);
     }   
 
     private void Dash()

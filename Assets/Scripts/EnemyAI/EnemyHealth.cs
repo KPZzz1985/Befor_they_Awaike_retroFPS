@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using System;
+using System.Collections.Generic;
 
 public class EnemyHealth : MonoBehaviour
 {
@@ -485,6 +486,23 @@ public class EnemyHealth : MonoBehaviour
     public void TriggerDeathEvent()
     {
         OnDeath?.Invoke(this);
+        // Random other enemy reacts to this death
+        // Find all EnemyHealth in scene
+        var all = FindObjectsOfType<EnemyHealth>();
+        var candidates = new List<VoiceSystem>();
+        foreach (var eh in all)
+        {
+            if (eh != this && !eh.isDead)
+            {
+                var vs = eh.GetComponent<VoiceSystem>();
+                if (vs != null) candidates.Add(vs);
+            }
+        }
+        if (candidates.Count > 0)
+        {
+            var chosen = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            chosen.TriggerEvent(VoiceEventType.EnemyDie);
+        }
     }
     
     /// <summary>

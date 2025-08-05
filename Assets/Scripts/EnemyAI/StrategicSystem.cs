@@ -30,6 +30,9 @@ public class StrategicSystem : MonoBehaviour
         public bool isPatrol;
         public bool isAssault = false;
         public bool isPlayerSeen = false; // ✅ Новый флаг
+        // Flags to ensure PlayerSeen/PlayerLost utterances only happen once per state
+        public bool hasSpokenOnSeen = false;
+        public bool hasSpokenOnLost = false;
         public bool isThrowingAbility; // guard grenade throw
         public bool isBurstFiring;     // guard burst fire
 
@@ -218,11 +221,27 @@ public class StrategicSystem : MonoBehaviour
             enemyStatus.isDead = enemyHealth != null && (enemyHealth.isDead || enemyHealth.isHandlingDeath);
             enemyStatus.weaponName = enemyChecker != null ? enemyChecker.GetEnemyWeaponName(enemyStatus.enemyObject) : "Unknown";
             enemyStatus.isPatrol = enemyPatrol != null && enemyPatrol.enabled;
-            enemyStatus.isPlayerSeen = enemyStatus.PlayerSeen;
-
-            // ⛔ Если враг мертв или обрабатывает смерть, не управляем им
+            // Move dead check to before PlayerSeen triggers
             if (enemyStatus.isDead)
                 continue;
+            var wasSeen = enemyStatus.isPlayerSeen;
+            enemyStatus.isPlayerSeen = enemyStatus.PlayerSeen;
+            // Rising edge: player seen
+            if (enemyStatus.isPlayerSeen && !wasSeen && !enemyStatus.hasSpokenOnSeen)
+            {
+                var voice = enemyStatus.enemyObject.GetComponent<VoiceSystem>();
+                if (voice != null) voice.TriggerEvent(VoiceEventType.PlayerSeen);
+                enemyStatus.hasSpokenOnSeen = true;
+                enemyStatus.hasSpokenOnLost = false;
+            }
+            // Falling edge: player lost
+            if (!enemyStatus.isPlayerSeen && wasSeen && !enemyStatus.hasSpokenOnLost)
+            {
+                var voice = enemyStatus.enemyObject.GetComponent<VoiceSystem>();
+                if (voice != null) voice.TriggerEvent(VoiceEventType.PlayerLost);
+                enemyStatus.hasSpokenOnLost = true;
+                enemyStatus.hasSpokenOnSeen = false;
+            }
 
             // ✅ Теперь StrategicSystem управляет стрельбой (только для живых врагов)
             enemyStatus.isShooting = enemyStatus.isPlayerSeen;
@@ -371,6 +390,8 @@ public class StrategicSystem : MonoBehaviour
     private async UniTask ThrowAbility(EnemyStatus status, CancellationToken cancellationToken)
     {
         status.isThrowingAbility = true;
+        var voice = status.enemyObject.GetComponent<VoiceSystem>();
+        if (voice != null) voice.TriggerEvent(VoiceEventType.ThrowAbility);
         // trigger throw animation
         var animator = status.enemyObject.GetComponent<Animator>();
         if (animator != null)
@@ -514,6 +535,8 @@ public class StrategicSystem : MonoBehaviour
     private async UniTaskVoid BurstFireAbility(EnemyStatus status)
     {
         status.isBurstFiring = true;
+        var voice = status.enemyObject.GetComponent<VoiceSystem>();
+        if (voice != null) voice.TriggerEvent(VoiceEventType.BurstFire);
         var weapon = status.enemyObject.GetComponent<EnemyWeapon>();
         if (weapon == null) return;
         int burstShots = weapon.shotsPerBurst;

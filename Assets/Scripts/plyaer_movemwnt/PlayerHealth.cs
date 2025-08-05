@@ -13,6 +13,15 @@ public class PlayerHealth : MonoBehaviour
     public int maxHealth = 1000;
     private float _healthPercentage = 100f;
 
+    [Header("Voice Settings")]
+    [Tooltip("Health % threshold to trigger low health voice")]
+    [Range(0f, 100f)]
+    public float lowHealthThreshold = 30f;
+
+    [Tooltip("Health % threshold to trigger critical health voice")]
+    [Range(0f, 100f)]
+    public float criticalHealthThreshold = 10f;
+
     public float damageCameraShakeForce = 5f;
     private Vector3 originalCameraPosition;
 
@@ -82,7 +91,22 @@ public class PlayerHealth : MonoBehaviour
     /// </summary>
     public void TakeDamage(int damage)
     {
+        // evaluate old and new health percentages for threshold crossing
+        float oldPerc = HealthPercentage;
         HealthPercentage -= ((float)damage / maxHealth) * 100f;
+        float newPerc = HealthPercentage;
+
+        // trigger critical health voice first
+        var voice = GetComponent<VoiceSystem>();
+        if (oldPerc > criticalHealthThreshold && newPerc <= criticalHealthThreshold)
+        {
+            if (voice != null) voice.TriggerEvent(VoiceEventType.HealthCritical);
+        }
+        else if (oldPerc > lowHealthThreshold && newPerc <= lowHealthThreshold)
+        {
+            if (voice != null) voice.TriggerEvent(VoiceEventType.HealthLow);
+        }
+
         if (CurrentHealth <= 0)
         {
             Die();
@@ -91,7 +115,7 @@ public class PlayerHealth : MonoBehaviour
         {
             // Легкий эффект встряски камеры
             CameraShake();
-            
+
             // Новый UI эффект вместо тяжелого Fog
             TriggerDamageUIEffect();
         }
@@ -172,6 +196,12 @@ public class PlayerHealth : MonoBehaviour
 
     private void Die()
     {
+        var voice = GetComponent<VoiceSystem>();
+        if (voice != null)
+        {
+            voice.TriggerEvent(VoiceEventType.PlayerDie);
+            voice.enabled = false;
+        }
         Debug.Log("Player died!");
         
         // УПРОЩЕННАЯ логика смерти: только отключаем управление камерой

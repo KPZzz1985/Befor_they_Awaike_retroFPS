@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
+using System;
 
 /// <summary>
 /// Маппинг текстуры на тип урона для специальной смерти
@@ -43,6 +45,11 @@ public class Damageable : MonoBehaviour
     public Damageable linkedPart;              // If this part is linked to another part
     public Animator animator;                  // Animator for destruction trigger
     public string destroyTriggerName;          // Trigger name to play on part destruction
+    /// <summary>
+    /// Event invoked once when this part is destroyed.
+    /// </summary>
+    public event Action OnPartDestroyed;
+    private bool _partDestroyedEventFired = false;
 
     [Header("Health Settings")]
     [SerializeField] private float healthMultiplier = 1.1f;
@@ -333,7 +340,11 @@ public class Damageable : MonoBehaviour
     private void PartDestroyed()
     {
         if (!isPartDestroyed) return;
-
+        if (!_partDestroyedEventFired)
+        {
+            _partDestroyedEventFired = true;
+            OnPartDestroyed?.Invoke();
+        }
         // Destroy designated objects
         foreach (GameObject obj in destroyedObjects)
         {

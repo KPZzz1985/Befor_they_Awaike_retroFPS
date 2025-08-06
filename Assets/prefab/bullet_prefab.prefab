@@ -86,7 +86,7 @@ MonoBehaviour:
   lifeTime: 3
   damage: 0
   isHoming: 1
-  homingStrength: 5.5
+  homingStrength: 6.5
   target: {fileID: 0}
   homingProbability: 1
 --- !u!108 &-5165516064647116171

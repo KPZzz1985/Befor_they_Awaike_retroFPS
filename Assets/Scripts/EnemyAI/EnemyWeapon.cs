@@ -109,14 +109,24 @@ public class EnemyWeapon : MonoBehaviour
         // Load weapon data directly from currentWeaponPrefabName
         animator = GetComponent<Animator>();
         maxAmmoCount = ammoCount;
-        // Initialize 3D audio source for shooting
-        shootAudioSource = GetComponent<AudioSource>();
-        if (shootAudioSource == null) shootAudioSource = gameObject.AddComponent<AudioSource>();
-        shootAudioSource.spatialBlend = 1f;
-        shootAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
-        shootAudioSource.minDistance = shootMinDistance;
-        shootAudioSource.maxDistance = shootMaxDistance;
-        shootAudioSource.playOnAwake = false;
+        // Initialize 3D audio source for shooting, using weapon holder child if available
+        // Find a child GameObject tagged "weaponHolderEnemy"
+        GameObject holderGO = FindDeepChildByTag(gameObject, "weaponHolderEnemy");
+        if (holderGO != null)
+            shootAudioSource = holderGO.GetComponent<AudioSource>();
+        // If no source found on holder, fallback to this GameObject
+        if (shootAudioSource == null)
+        {
+            shootAudioSource = GetComponent<AudioSource>();
+            if (shootAudioSource == null)
+                shootAudioSource = gameObject.AddComponent<AudioSource>();
+            // configure default settings only for newly created or root AudioSource
+            shootAudioSource.spatialBlend = 1f;
+            shootAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            shootAudioSource.minDistance = shootMinDistance;
+            shootAudioSource.maxDistance = shootMaxDistance;
+            shootAudioSource.playOnAwake = false;
+        }
         attachedWeaponDisplay = currentWeaponPrefabName;
         if (!string.IsNullOrEmpty(attachedWeaponDisplay))
             LoadWeaponData(attachedWeaponDisplay);

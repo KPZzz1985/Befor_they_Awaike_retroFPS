@@ -34,9 +34,7 @@ public class VoiceSystem : MonoBehaviour
     {
         // Ensure an AudioSource is present and enabled
         audioSource = GetComponent<AudioSource>();
-        if (audioSource == null)
-            audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.enabled = true;
+        // Do not recreate or force-enable AudioSource, preserve editor settings
         // Assign EnemyHealth if not set
         if (enemyHealth == null)
             enemyHealth = GetComponent<EnemyHealth>();
@@ -190,12 +188,8 @@ public class VoiceSystem : MonoBehaviour
         if (shouldStop)
         {
             StopAllVoice();
-            if (audioSource != null)
-            {
-                Destroy(audioSource); // completely remove AudioSource to prevent any further sound
-                audioSource = null;
-            }
-            enabled = false; // disable voice system
+            // preserve AudioSource component; only stop playback
+            enabled = false;
         }
     }
 }

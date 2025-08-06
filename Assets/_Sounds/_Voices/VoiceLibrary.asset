@@ -15,21 +15,22 @@ MonoBehaviour:
   events:
   - eventType: 0
     clips:
-    - {fileID: 8300000, guid: 9d8ceea32a3db404f9372ae2c38f2626, type: 3}
+    - {fileID: 8300000, guid: be13cb424f4cd8d4dbc8e804de5ee773, type: 3}
+    - {fileID: 8300000, guid: 96255ef7de9ae2e47ad18d84b156123c, type: 3}
     - {fileID: 8300000, guid: f87ed824c6a6d1c4aad0495707081424, type: 3}
     priority: 100
     cooldown: 2
-    sayChance: 0.85
+    sayChance: 0.95
   - eventType: 2
     clips:
     - {fileID: 8300000, guid: c587cf028b8a3b945b0df459564586f5, type: 3}
     - {fileID: 8300000, guid: ec8124bf82b3f9648b6a45e0d03bee7f, type: 3}
     priority: 50
     cooldown: 15
-    sayChance: 0.025
+    sayChance: 0.05
   - eventType: 3
     clips:
     - {fileID: 8300000, guid: b79b9e20af2c4114d9d9c136f1100e28, type: 3}
     priority: 35
     cooldown: 10
-    sayChance: 0.075
+    sayChance: 0.025

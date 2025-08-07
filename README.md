@@ -155,6 +155,17 @@ This README summarizes the recent enhancements to the enemy AI, strategic patter
 6. **PSOneShaderGI Parameter Auto-Apply**
    - Use the **Tools → Set PSOneShaderGI Params for Materials** window to adjust shader parameters (_Tiling, _PixelationAmount, _ColorPrecision, _JitterAmount, _TextureFPS, _TextureJitterAmplitude).
    - Settings are saved in `EditorPrefs` and now automatically applied to all materials when entering Play Mode, so manual application is no longer required.
+7. **Voice System Setup**
+   - Add the `VoiceSystem` component to player and enemy prefabs where character voice is needed.
+   - In the `VoiceSystem` inspector, assign:
+     - **Enemy Health**: reference to the `EnemyHealth` component (auto-assigned if on same GameObject)
+     - **Head Damageable**: the `Damageable` component on the head part (child GameObject tagged `weaponHolderEnemy`)
+     - **Voice Library**: the `VoiceLibrary` ScriptableObject asset
+   - Create a **VoiceLibrary** asset via Assets → Create → Voice → Voice Library. For each `VoiceEventType` (ThrowAbility, BurstFire, PlayerSeen, PlayerLost, Dashing, HealthLow, HealthCritical, PlayerDie, EnemyDie):
+     - Add one or more audio clips
+     - Set **Priority**, **Cooldown**, and **Say Chance** (0–1)
+   - For enemy weapons, add an `AudioSource` to the child GameObject tagged `weaponHolderEnemy`, configure attenuation and 3D settings in inspector; `EnemyWeapon` will use that source for shooting sounds.
+   - Run the scene and test voice events: Dashing (Shift), PlayerSeen/Lost (enemy detection), GrenadeThrow and BurstFire (abilities), health thresholds (PlayerHealth), and death events. Verify that the editor-configured `AudioSource` settings are respected.
 
 ## Next Steps
 

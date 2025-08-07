@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: StandartFireEffect
   m_EditorClassIdentifier: 
   type: 2
-  duration: 8
-  tickInterval: 1
-  tickDamage: 2
+  duration: 9
+  tickInterval: 3
+  tickDamage: 15
   enterParam: 
   exitParam: 
   deathTrigger: 

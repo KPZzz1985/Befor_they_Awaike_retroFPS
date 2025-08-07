@@ -80,7 +80,7 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _JitterAmount: 1
+    - _JitterAmount: 1.1
     - _JitterFrequency: 0
     - _JitterStrength: 0
     - _Metallic: 0
@@ -95,8 +95,8 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TextureFPS: 0.01
-    - _TextureJitterAmplitude: 0.0005
+    - _TextureFPS: 1.5
+    - _TextureJitterAmplitude: 0.0025
     - _Tiling: 1
     - _TwitchFactor: 0.1
     - _TwitchSpeed: 0.1
